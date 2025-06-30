@@ -7,6 +7,8 @@ requires-python = ">=3.12"
 dependencies = [
     "clai>=0.3.4",
     "httpx>=0.28.1",
+    "ipython>=9.3.0",
     "loguru>=0.7.3",
+    "markitdown[pdf]>=0.1.2",
     "pydantic-ai>=0.3.4",
 ]

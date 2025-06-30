@@ -1,10 +1,23 @@
-# Python-generated files
+.states
+assets/external/
+**/*.db
+**/*.ipynb
+**/*.pyc
+**/*.swp
+**/.DS_Store
+**/.web
+**/node_modules/**
+**/package-lock.json
+**/package.json
+*.db
+*.py[cod]
+.vscode
+.web
 __pycache__/
-*.py[oc]
-build/
-dist/
-wheels/
-*.egg-info
-
-# Virtual environments
-.venv
+backend.zip
+bun.lockb
+dist/*
+frontend.zip
+poetry.lock
+venv/
+*.env

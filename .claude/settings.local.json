@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(ls:*)",
+      "Bash(grep:*)",
+      "WebFetch(domain:ly.govapi.tw)",
+      "Bash(mkdir:*)",
+      "Bash(python:*)",
+      "Bash(source:*)"
+    ],
+    "deny": []
+  }
+}
