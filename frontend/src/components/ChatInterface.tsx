@@ -88,22 +88,34 @@ const ChatInterface: React.FC = () => {
 
       try {
         let toolCallsInfo = '';
+        let toolCallsReceived = false;
         
         for await (const chunk of apiClient.chatCompletionStream(chatMessages)) {
+          if (chunk.tool_calls) {
+            // Format tool calls for display
+            const toolCallText = chunk.tool_calls.map(tc => {
+              const args = JSON.parse(tc.function.arguments);
+              const formattedArgs = Object.entries(args)
+                .map(([key, value]) => `  ${key}: ${JSON.stringify(value)}`)
+                .join('\n');
+              return `🔧 正在查詢: ${tc.function.name}\n${formattedArgs}`;
+            }).join('\n\n');
+            
+            if (!toolCallsReceived) {
+              toolCallsInfo = toolCallText + '\n\n正在處理中...\n\n';
+              toolCallsReceived = true;
+            } else {
+              toolCallsInfo += '\n' + toolCallText;
+            }
+          }
+          
           if (chunk.content) {
             assistantContent += chunk.content;
           }
-          
-          if (chunk.tool_calls) {
-            // Format tool calls for display
-            const toolCallText = chunk.tool_calls.map(tc => 
-              `🔧 調用工具: ${tc.function.name}\n參數: ${tc.function.arguments}`
-            ).join('\n\n');
-            toolCallsInfo = toolCallText;
-          }
 
-          const displayText = toolCallsInfo ? 
-            `${assistantContent}\n\n${toolCallsInfo}` : 
+          // Display tool calls first, then content
+          const displayText = toolCallsReceived ? 
+            `${toolCallsInfo}${assistantContent}` : 
             assistantContent;
 
           setMessages(prev => prev.map(msg =>

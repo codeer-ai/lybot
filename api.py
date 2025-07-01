@@ -13,7 +13,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from sse_starlette.sse import EventSourceResponse
 from pydantic_ai import Agent
 from pydantic_ai.models.google import GoogleModel, GoogleModelSettings
-from pydantic_ai.messages import ModelMessage, ToolCallPart, ToolReturnPart, TextPart
+from pydantic_ai.messages import (
+    ModelMessage, 
+    ToolCallPart, 
+    ToolReturnPart, 
+    TextPart,
+    FunctionToolCallEvent,
+    FunctionToolResultEvent,
+    PartDeltaEvent,
+    PartStartEvent,
+    TextPartDelta,
+    ToolCallPartDelta,
+)
 from loguru import logger
 
 from models import (
@@ -96,7 +107,7 @@ async def stream_response(
     model: str,
     session_id: str,
 ) -> AsyncGenerator[str, None]:
-    """Stream response from the agent."""
+    """Stream response from the agent with real-time tool call support using iter()."""
     # Get existing session history
     message_history = get_session_history(session_id)
     
@@ -126,76 +137,106 @@ async def stream_response(
         )
         yield initial_chunk.model_dump_json()
         
-        # Run agent with streaming
-        async with agent.run_stream(
-            prompt, message_history=message_history
-        ) as result:
-            # Track previous content to calculate deltas
-            previous_content = ""
-            
-            # Stream content chunks
-            async for text in result.stream(debounce_by=0.01):
-                # Calculate the delta (new content since last chunk)
-                if text.startswith(previous_content):
-                    delta_content = text[len(previous_content):]
-                else:
-                    # If not incremental, send full text (fallback)
-                    delta_content = text
+        # Track state
+        accumulated_text = ""
+        tool_calls_sent = []
+        
+        # Run agent with iter() for fine-grained control
+        async with agent.iter(prompt, message_history=message_history) as run:
+            async for node in run:
+                if Agent.is_model_request_node(node):
+                    # Model is generating response - stream text and tool calls
+                    logger.debug("Processing ModelRequestNode")
+                    
+                    async with node.stream(run.ctx) as request_stream:
+                        async for event in request_stream:
+                            if isinstance(event, PartStartEvent):
+                                if isinstance(event.part, TextPart):
+                                    # Starting text generation
+                                    logger.debug(f"Starting text part: {event.part.content[:50]}...")
+                            elif isinstance(event, PartDeltaEvent):
+                                if isinstance(event.delta, TextPartDelta):
+                                    # Stream text delta
+                                    if event.delta.content_delta:
+                                        chunk = ChatCompletionStreamResponse(
+                                            id=stream_id,
+                                            model=model,
+                                            choices=[
+                                                ChatCompletionStreamResponseChoice(
+                                                    index=0,
+                                                    delta=ChatCompletionStreamResponseDelta(
+                                                        content=event.delta.content_delta
+                                                    ),
+                                                    finish_reason=None,
+                                                )
+                                            ],
+                                        )
+                                        yield chunk.model_dump_json()
+                                        accumulated_text += event.delta.content_delta
+                                elif isinstance(event.delta, ToolCallPartDelta):
+                                    # Tool call delta - we'll handle complete tool calls in CallToolsNode
+                                    logger.debug(f"Tool call delta: {event.delta}")
                 
-                previous_content = text
+                elif Agent.is_call_tools_node(node):
+                    # Model wants to call tools - stream tool call events
+                    logger.debug("Processing CallToolsNode")
+                    
+                    async with node.stream(run.ctx) as tools_stream:
+                        async for event in tools_stream:
+                            if isinstance(event, FunctionToolCallEvent):
+                                # Convert to OpenAI format and stream immediately
+                                tool_call = ToolCall(
+                                    id=event.part.tool_call_id,
+                                    function=FunctionCall(
+                                        name=event.part.tool_name,
+                                        arguments=json.dumps(event.part.args) if isinstance(event.part.args, dict) else str(event.part.args)
+                                    )
+                                )
+                                tool_calls_sent.append(tool_call)
+                                
+                                # Send tool call chunk
+                                tool_call_chunk = ChatCompletionStreamResponse(
+                                    id=stream_id,
+                                    model=model,
+                                    choices=[
+                                        ChatCompletionStreamResponseChoice(
+                                            index=0,
+                                            delta=ChatCompletionStreamResponseDelta(
+                                                tool_calls=[tool_call]
+                                            ),
+                                            finish_reason=None,
+                                        )
+                                    ],
+                                )
+                                yield tool_call_chunk.model_dump_json()
+                                
+                                logger.info(f"Streamed tool call: {event.part.tool_name}")
+                            
+                            elif isinstance(event, FunctionToolResultEvent):
+                                # Tool execution completed
+                                logger.debug(f"Tool {event.tool_call_id} completed")
                 
-                # Only send chunk if there's new content
-                if delta_content:
-                    chunk = ChatCompletionStreamResponse(
-                        id=stream_id,
-                        model=model,
-                        choices=[
-                            ChatCompletionStreamResponseChoice(
-                                index=0,
-                                delta=ChatCompletionStreamResponseDelta(content=delta_content),
-                                finish_reason=None,
-                            )
-                        ],
-                    )
-                    yield chunk.model_dump_json()
-            
-            # After text streaming completes, check for tool calls in the result
-            new_messages = result.new_messages()
-            tool_calls = extract_tool_calls_from_messages(new_messages)
-            
-            # If there are tool calls, send them
-            if tool_calls:
-                # Send tool calls chunk with tool_calls finish_reason
-                tool_calls_chunk = ChatCompletionStreamResponse(
-                    id=stream_id,
-                    model=model,
-                    choices=[
-                        ChatCompletionStreamResponseChoice(
-                            index=0,
-                            delta=ChatCompletionStreamResponseDelta(tool_calls=tool_calls),
-                            finish_reason="tool_calls",
-                        )
-                    ],
+                elif Agent.is_end_node(node):
+                    # Agent run complete
+                    logger.debug("Processing EndNode")
+                    # Update session history
+                    if hasattr(run, 'result') and run.result:
+                        sessions[session_id] = message_history + run.result.new_messages()
+        
+        # Send final chunk
+        final_finish_reason = "tool_calls" if tool_calls_sent else "stop"
+        final_chunk = ChatCompletionStreamResponse(
+            id=stream_id,
+            model=model,
+            choices=[
+                ChatCompletionStreamResponseChoice(
+                    index=0,
+                    delta=ChatCompletionStreamResponseDelta(),
+                    finish_reason=final_finish_reason,
                 )
-                yield tool_calls_chunk.model_dump_json()
-            
-            # Send final chunk with appropriate finish reason  
-            final_finish_reason = "tool_calls" if tool_calls else "stop"
-            final_chunk = ChatCompletionStreamResponse(
-                id=stream_id,
-                model=model,
-                choices=[
-                    ChatCompletionStreamResponseChoice(
-                        index=0,
-                        delta=ChatCompletionStreamResponseDelta(),
-                        finish_reason=final_finish_reason,
-                    )
-                ],
-            )
-            yield final_chunk.model_dump_json()
-            
-            # Update session history using new_messages()
-            sessions[session_id] = message_history + new_messages
+            ],
+        )
+        yield final_chunk.model_dump_json()
             
     except Exception as e:
         logger.error(f"Error in stream_response: {e}")
