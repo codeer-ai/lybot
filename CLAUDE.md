@@ -120,6 +120,74 @@ lybot/
 - ⚠️ PDF voting record extraction needs real gazette testing
 - ⚠️ Budget analysis features need document samples
 
+## Web Frontend
+
+### Frontend Architecture
+The project now includes a modern web frontend built with:
+- **Vite + React + TypeScript** for fast development and type safety
+- **shadcn/ui** component library for polished UI components
+- **Tailwind CSS v4** for modern styling with the latest features
+- **FastAPI backend** with OpenAI-compatible API endpoints
+
+### Frontend Structure
+```
+frontend/
+├── src/
+│   ├── components/
+│   │   ├── ui/           # shadcn/ui components
+│   │   └── ChatInterface.tsx  # Main chat interface
+│   ├── lib/
+│   │   ├── api.ts        # API client for backend communication
+│   │   ├── types.ts      # TypeScript interfaces
+│   │   └── utils.ts      # Utility functions
+│   └── index.css         # Tailwind v4 CSS with design tokens
+├── tailwind.config.js    # Tailwind v4 configuration
+├── components.json       # shadcn/ui configuration
+└── package.json          # Dependencies and scripts
+```
+
+### Development Commands
+```bash
+# Frontend development (in frontend/ directory)
+npm install           # Install dependencies
+npm run dev           # Start development server
+npm run build         # Build for production
+
+# Backend API server (in root directory)
+python api.py         # Start FastAPI server on port 8000
+```
+
+### Technical Implementation
+
+**Backend API (api.py)**:
+- FastAPI server with OpenAI-compatible chat completions endpoint
+- Streaming and non-streaming response support
+- Session management for conversation history
+- CORS enabled for frontend communication
+
+**Frontend Features**:
+- Modern chat interface with message bubbles
+- Real-time streaming responses from AI
+- Dark/light theme toggle
+- Professional Taiwan Legislative Yuan branding
+- Responsive design with mobile support
+- Type-safe API communication
+
+**Styling with Tailwind v4**:
+- Uses `@import "tailwindcss"` for v4 syntax
+- Modern color palette with HSL design tokens
+- Glass morphism effects with backdrop blur
+- Gradient buttons and message bubbles
+- Smooth animations and micro-interactions
+
+### Integration Notes
+
+1. **API Compatibility**: Frontend communicates with FastAPI backend using OpenAI-compatible format
+2. **Streaming**: Real-time message streaming using Server-Sent Events (SSE)
+3. **Error Handling**: Graceful fallback from streaming to non-streaming mode
+4. **Session Management**: Conversation history maintained on backend
+5. **Modern UX**: Inspired by leading AI SaaS companies (OpenAI, Linear, Perplexity)
+
 ## Future Improvements to Consider
 
 - Add comprehensive test suite with real API response fixtures
@@ -129,3 +197,6 @@ lybot/
 - Add support for historical terms (not just 11th)
 - Implement real-time session tracking
 - Add webhook support for legislative updates
+- Add user authentication and session persistence
+- Implement message export functionality
+- Add conversation search and history browsing
