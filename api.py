@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sse_starlette.sse import EventSourceResponse
 from pydantic_ai import Agent
 from pydantic_ai.models.google import GoogleModel, GoogleModelSettings
-from pydantic_ai.messages import ModelMessage
+from pydantic_ai.messages import ModelMessage, ToolCallPart, ToolReturnPart, TextPart
 from loguru import logger
 
 from models import (
@@ -27,6 +27,8 @@ from models import (
     ModelInfo,
     ModelListResponse,
     ErrorResponse,
+    FunctionCall,
+    ToolCall,
 )
 
 # Import the agent setup from main.py
@@ -65,6 +67,27 @@ app.add_middleware(
 def get_session_history(session_id: str) -> List[ModelMessage]:
     """Get conversation history for a session."""
     return sessions.get(session_id, [])
+
+
+def convert_tool_call_to_openai(tool_call: ToolCallPart) -> ToolCall:
+    """Convert PydanticAI ToolCallPart to OpenAI ToolCall format."""
+    return ToolCall(
+        id=tool_call.tool_call_id,
+        function=FunctionCall(
+            name=tool_call.tool_name,
+            arguments=json.dumps(tool_call.args) if isinstance(tool_call.args, dict) else str(tool_call.args)
+        )
+    )
+
+
+def extract_tool_calls_from_messages(messages: List[ModelMessage]) -> List[ToolCall]:
+    """Extract tool calls from PydanticAI messages."""
+    tool_calls = []
+    for message in messages:
+        for part in message.parts:
+            if isinstance(part, ToolCallPart):
+                tool_calls.append(convert_tool_call_to_openai(part))
+    return tool_calls
 
 
 async def stream_response(
@@ -136,7 +159,28 @@ async def stream_response(
                     )
                     yield chunk.model_dump_json()
             
-            # Send final chunk
+            # After text streaming completes, check for tool calls in the result
+            new_messages = result.new_messages()
+            tool_calls = extract_tool_calls_from_messages(new_messages)
+            
+            # If there are tool calls, send them
+            if tool_calls:
+                # Send tool calls chunk with tool_calls finish_reason
+                tool_calls_chunk = ChatCompletionStreamResponse(
+                    id=stream_id,
+                    model=model,
+                    choices=[
+                        ChatCompletionStreamResponseChoice(
+                            index=0,
+                            delta=ChatCompletionStreamResponseDelta(tool_calls=tool_calls),
+                            finish_reason="tool_calls",
+                        )
+                    ],
+                )
+                yield tool_calls_chunk.model_dump_json()
+            
+            # Send final chunk with appropriate finish reason  
+            final_finish_reason = "tool_calls" if tool_calls else "stop"
             final_chunk = ChatCompletionStreamResponse(
                 id=stream_id,
                 model=model,
@@ -144,14 +188,14 @@ async def stream_response(
                     ChatCompletionStreamResponseChoice(
                         index=0,
                         delta=ChatCompletionStreamResponseDelta(),
-                        finish_reason="stop",
+                        finish_reason=final_finish_reason,
                     )
                 ],
             )
             yield final_chunk.model_dump_json()
             
             # Update session history using new_messages()
-            sessions[session_id] = message_history + result.new_messages()
+            sessions[session_id] = message_history + new_messages
             
     except Exception as e:
         logger.error(f"Error in stream_response: {e}")
@@ -213,16 +257,27 @@ async def chat_completions(
         result = await agent.run(prompt, message_history=message_history)
         
         # Update session history using new_messages()
-        sessions[session_id] = message_history + result.new_messages()
+        new_messages = result.new_messages()
+        sessions[session_id] = message_history + new_messages
         
-        # Create response
+        # Extract tool calls if any
+        tool_calls = extract_tool_calls_from_messages(new_messages)
+        
+        # Create response with tool calls if present
+        finish_reason = "tool_calls" if tool_calls else "stop"
+        message = Message(
+            role="assistant", 
+            content=result.output,
+            tool_calls=tool_calls if tool_calls else None
+        )
+        
         response = ChatCompletionResponse(
             model=request.model,
             choices=[
                 ChatCompletionResponseChoice(
                     index=0,
-                    message=Message(role="assistant", content=result.output),
-                    finish_reason="stop",
+                    message=message,
+                    finish_reason=finish_reason,
                 )
             ],
             usage={

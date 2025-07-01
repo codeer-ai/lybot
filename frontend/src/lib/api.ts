@@ -46,7 +46,7 @@ export class LyBotAPIClient {
     options: {
       temperature?: number;
     } = {}
-  ): AsyncGenerator<string, void, unknown> {
+  ): AsyncGenerator<{ content?: string; tool_calls?: ToolCall[]; finish_reason?: string }, void, unknown> {
     const { temperature = 0.7 } = options;
 
     const request: ChatCompletionRequest = {
@@ -110,10 +110,15 @@ export class LyBotAPIClient {
 
             try {
               const parsed: ChatCompletionStreamResponse = JSON.parse(data);
-              const content = parsed.choices[0]?.delta?.content;
+              const delta = parsed.choices[0]?.delta;
+              const finish_reason = parsed.choices[0]?.finish_reason;
               
-              if (content) {
-                yield content;
+              if (delta?.content || delta?.tool_calls || finish_reason) {
+                yield {
+                  content: delta?.content,
+                  tool_calls: delta?.tool_calls,
+                  finish_reason: finish_reason
+                };
               }
             } catch (e) {
               // Skip invalid JSON lines silently

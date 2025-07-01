@@ -6,10 +6,25 @@ import time
 import uuid
 
 
+class FunctionCall(BaseModel):
+    """OpenAI function call structure."""
+    name: str
+    arguments: str
+
+
+class ToolCall(BaseModel):
+    """OpenAI tool call structure."""
+    id: str
+    type: Literal["function"] = "function"
+    function: FunctionCall
+
+
 class Message(BaseModel):
-    role: Literal["system", "user", "assistant"]
-    content: str
+    role: Literal["system", "user", "assistant", "tool"]
+    content: Optional[str] = None
     name: Optional[str] = None
+    tool_calls: Optional[List[ToolCall]] = None
+    tool_call_id: Optional[str] = None
 
 
 class ChatCompletionRequest(BaseModel):
@@ -30,7 +45,7 @@ class ChatCompletionRequest(BaseModel):
 class ChatCompletionResponseChoice(BaseModel):
     index: int
     message: Message
-    finish_reason: Optional[Literal["stop", "length", "content_filter", "function_call"]] = None
+    finish_reason: Optional[Literal["stop", "length", "content_filter", "tool_calls"]] = None
 
 
 class ChatCompletionResponse(BaseModel):
@@ -46,12 +61,13 @@ class ChatCompletionResponse(BaseModel):
 class ChatCompletionStreamResponseDelta(BaseModel):
     role: Optional[Literal["assistant"]] = None
     content: Optional[str] = None
+    tool_calls: Optional[List[ToolCall]] = None
 
 
 class ChatCompletionStreamResponseChoice(BaseModel):
     index: int
     delta: ChatCompletionStreamResponseDelta
-    finish_reason: Optional[Literal["stop", "length", "content_filter"]] = None
+    finish_reason: Optional[Literal["stop", "length", "content_filter", "tool_calls"]] = None
 
 
 class ChatCompletionStreamResponse(BaseModel):

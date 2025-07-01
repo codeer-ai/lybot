@@ -6,9 +6,22 @@ export interface Message {
   status?: 'sending' | 'sent' | 'error';
 }
 
+export interface FunctionCall {
+  name: string;
+  arguments: string;
+}
+
+export interface ToolCall {
+  id: string;
+  type: 'function';
+  function: FunctionCall;
+}
+
 export interface ChatMessage {
-  role: 'user' | 'assistant' | 'system';
-  content: string;
+  role: 'user' | 'assistant' | 'system' | 'tool';
+  content: string | null;
+  tool_calls?: ToolCall[];
+  tool_call_id?: string;
 }
 
 export interface ChatCompletionRequest {
@@ -29,6 +42,7 @@ export interface ChatCompletionResponse {
     message: {
       role: string;
       content: string;
+      tool_calls?: ToolCall[];
     };
     finish_reason: string;
   }[];
@@ -44,6 +58,7 @@ export interface ChatCompletionStreamResponse {
     delta: {
       role?: string;
       content?: string;
+      tool_calls?: ToolCall[];
     };
     finish_reason?: string;
   }[];

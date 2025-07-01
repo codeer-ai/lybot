@@ -87,12 +87,28 @@ const ChatInterface: React.FC = () => {
       }]);
 
       try {
+        let toolCallsInfo = '';
+        
         for await (const chunk of apiClient.chatCompletionStream(chatMessages)) {
-          assistantContent += chunk;
+          if (chunk.content) {
+            assistantContent += chunk.content;
+          }
+          
+          if (chunk.tool_calls) {
+            // Format tool calls for display
+            const toolCallText = chunk.tool_calls.map(tc => 
+              `🔧 調用工具: ${tc.function.name}\n參數: ${tc.function.arguments}`
+            ).join('\n\n');
+            toolCallsInfo = toolCallText;
+          }
+
+          const displayText = toolCallsInfo ? 
+            `${assistantContent}\n\n${toolCallsInfo}` : 
+            assistantContent;
 
           setMessages(prev => prev.map(msg =>
             msg.id === assistantMessageId
-              ? { ...msg, text: assistantContent }
+              ? { ...msg, text: displayText }
               : msg
           ));
         }
