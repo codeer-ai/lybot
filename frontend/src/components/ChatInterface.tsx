@@ -3,6 +3,8 @@ import { Send, Building2, Moon, Sun, Circle, CheckCircle2, Sparkles, Zap } from 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import ReactMarkdown from 'react-markdown';
+import rehypeHighlight from 'rehype-highlight';
 import type { Message, ChatMessage } from '@/lib/types';
 import { apiClient } from '@/lib/api';
 import { generateId, formatTimestamp } from '@/lib/utils';
@@ -11,7 +13,7 @@ const ChatInterface: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: '您好！我是 LyBot，您的立法院研究助理。我可以幫您查詢立委資訊、法案進度、投票記錄等。有什麼問題想了解嗎？\n\n例如：\n• 查詢特定立委的提案記錄\n• 了解法案的投票結果\n• 分析政黨表現統計',
+      text: '您好！我是 **LyBot**，您的立法院研究助理。我可以幫您查詢立委資訊、法案進度、投票記錄等。有什麼問題想了解嗎？\n\n**例如：**\n- 查詢特定立委的提案記錄\n- 了解法案的投票結果\n- 分析政黨表現統計\n- 查看委員會會議資訊\n\n> 💡 您可以直接詢問任何關於台灣立法院的問題！',
       sender: 'assistant',
       timestamp: new Date(),
     },
@@ -232,10 +234,58 @@ const ChatInterface: React.FC = () => {
                         ? 'bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-600 text-white px-6 py-4 rounded-3xl rounded-br-xl shadow-lg hover:shadow-xl hover:scale-[1.02]'
                         : 'bg-card/80 backdrop-blur border border-border/60 px-6 py-5 rounded-3xl rounded-bl-xl shadow-sm hover:shadow-lg hover:bg-card/90 hover:border-border'
                     }`}>
-                      <div className={`text-[15px] leading-relaxed whitespace-pre-wrap ${
+                      <div className={`text-[15px] leading-relaxed ${
                         message.sender === 'assistant' ? 'text-card-foreground' : 'text-white'
                       }`}>
-                        {message.text}
+                        {message.sender === 'assistant' ? (
+                          <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-card-foreground prose-p:text-card-foreground prose-strong:text-card-foreground prose-li:text-card-foreground prose-code:text-card-foreground prose-pre:bg-muted prose-pre:border">
+                            <ReactMarkdown
+                              rehypePlugins={[rehypeHighlight]}
+                              components={{
+                              pre: ({ children }) => (
+                                <pre className="bg-muted/50 border border-border rounded-lg p-4 overflow-x-auto">
+                                  {children}
+                                </pre>
+                              ),
+                              code: ({ children, className }) => {
+                                const isInlineCode = !className;
+                                return isInlineCode ? (
+                                  <code className="bg-muted/60 px-1.5 py-0.5 rounded text-sm font-mono">
+                                    {children}
+                                  </code>
+                                ) : (
+                                  <code className={className}>{children}</code>
+                                );
+                              },
+                              ul: ({ children }) => (
+                                <ul className="list-disc list-inside space-y-1">{children}</ul>
+                              ),
+                              ol: ({ children }) => (
+                                <ol className="list-decimal list-inside space-y-1">{children}</ol>
+                              ),
+                              table: ({ children }) => (
+                                <div className="overflow-x-auto">
+                                  <table className="min-w-full border border-border rounded-lg overflow-hidden">
+                                    {children}
+                                  </table>
+                                </div>
+                              ),
+                              th: ({ children }) => (
+                                <th className="bg-muted/50 border border-border px-4 py-2 text-left font-semibold">
+                                  {children}
+                                </th>
+                              ),
+                              td: ({ children }) => (
+                                <td className="border border-border px-4 py-2">{children}</td>
+                              ),
+                            }}
+                              >
+                              {message.text}
+                            </ReactMarkdown>
+                          </div>
+                        ) : (
+                          <span className="whitespace-pre-wrap">{message.text}</span>
+                        )}
                         {isStreaming && message.text === '' && (
                           <div className="flex items-center gap-1.5">
                             <div className="w-2.5 h-2.5 rounded-full bg-current animate-pulse" style={{ animationDelay: '0ms' }} />
