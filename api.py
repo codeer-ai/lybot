@@ -101,26 +101,40 @@ async def stream_response(
                 )
             ],
         )
-        yield f"data: {initial_chunk.model_dump_json()}\n\n"
+        yield initial_chunk.model_dump_json()
         
         # Run agent with streaming
         async with agent.run_stream(
             prompt, message_history=message_history
         ) as result:
+            # Track previous content to calculate deltas
+            previous_content = ""
+            
             # Stream content chunks
             async for text in result.stream(debounce_by=0.01):
-                chunk = ChatCompletionStreamResponse(
-                    id=stream_id,
-                    model=model,
-                    choices=[
-                        ChatCompletionStreamResponseChoice(
-                            index=0,
-                            delta=ChatCompletionStreamResponseDelta(content=text),
-                            finish_reason=None,
-                        )
-                    ],
-                )
-                yield f"data: {chunk.model_dump_json()}\n\n"
+                # Calculate the delta (new content since last chunk)
+                if text.startswith(previous_content):
+                    delta_content = text[len(previous_content):]
+                else:
+                    # If not incremental, send full text (fallback)
+                    delta_content = text
+                
+                previous_content = text
+                
+                # Only send chunk if there's new content
+                if delta_content:
+                    chunk = ChatCompletionStreamResponse(
+                        id=stream_id,
+                        model=model,
+                        choices=[
+                            ChatCompletionStreamResponseChoice(
+                                index=0,
+                                delta=ChatCompletionStreamResponseDelta(content=delta_content),
+                                finish_reason=None,
+                            )
+                        ],
+                    )
+                    yield chunk.model_dump_json()
             
             # Send final chunk
             final_chunk = ChatCompletionStreamResponse(
@@ -134,7 +148,7 @@ async def stream_response(
                     )
                 ],
             )
-            yield f"data: {final_chunk.model_dump_json()}\n\n"
+            yield final_chunk.model_dump_json()
             
             # Update session history using new_messages()
             sessions[session_id] = message_history + result.new_messages()
@@ -142,10 +156,10 @@ async def stream_response(
     except Exception as e:
         logger.error(f"Error in stream_response: {e}")
         error_chunk = {"error": {"message": str(e), "type": "internal_error"}}
-        yield f"data: {json.dumps(error_chunk)}\n\n"
+        yield json.dumps(error_chunk)
     
     # Send final [DONE] message
-    yield "data: [DONE]\n\n"
+    yield "[DONE]"
 
 
 @app.get("/health")

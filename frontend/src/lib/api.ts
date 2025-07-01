@@ -75,6 +75,7 @@ export class LyBotAPIClient {
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
+    let buffer = '';
 
     try {
       while (true) {
@@ -84,12 +85,24 @@ export class LyBotAPIClient {
           break;
         }
 
+        // Decode the chunk and add to buffer
         const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n');
+        buffer += chunk;
+
+        // Split by lines, but keep the last incomplete line in buffer
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || ''; // Keep the last incomplete line
 
         for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6); // Remove 'data: ' prefix
+          const trimmedLine = line.trim();
+          
+          // Skip empty lines
+          if (!trimmedLine) {
+            continue;
+          }
+
+          if (trimmedLine.startsWith('data: ')) {
+            const data = trimmedLine.slice(6).trim(); // Remove 'data: ' prefix
             
             if (data === '[DONE]') {
               return;
@@ -103,8 +116,7 @@ export class LyBotAPIClient {
                 yield content;
               }
             } catch (e) {
-              // Skip invalid JSON lines
-              console.warn('Failed to parse streaming response:', data);
+              // Skip invalid JSON lines silently
             }
           }
         }
