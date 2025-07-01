@@ -4,12 +4,11 @@ from typing import Any, Dict, List, Optional
 import httpx
 from loguru import logger
 
-from utils.constituency_mapper import normalize_constituency
 
 
 def get_legislator_by_constituency(constituency: str) -> str:
     """
-    Get legislators by electoral district with fuzzy matching.
+    Get legislators by electoral district.
 
     Args:
         constituency: Electoral district name (e.g., "台北市第七選區" or "臺北市北松山‧信義")
@@ -19,22 +18,12 @@ def get_legislator_by_constituency(constituency: str) -> str:
     """
     logger.info(f"Getting legislators for constituency: {constituency}")
 
-    # Normalize the constituency name
-    normalized = normalize_constituency(constituency)
-    if normalized:
-        search_constituency = normalized
-    else:
-        search_constituency = constituency
-        logger.warning(
-            f"Could not normalize constituency name: {constituency}, using as-is"
-        )
-
     params = {
         "limit": "200",
         "page": "1",
         "agg": "委員姓名",
         "屆": "11",
-        "選區名稱": search_constituency,
+        "選區名稱": constituency,
     }
 
     logger.debug(f"Search params: {params}")
@@ -42,7 +31,7 @@ def get_legislator_by_constituency(constituency: str) -> str:
     response = httpx.get(url, params=params)
 
     data = response.json()
-    if data.get("total", 0) == 0 and normalized is None:
+    if data.get("total", 0) == 0:
         # Try alternative search strategies
         logger.info("No results found, trying partial match...")
         # Remove params and search all, then filter
