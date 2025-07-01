@@ -1,9 +1,12 @@
 export interface Message {
   id: string;
   text: string;
-  sender: 'user' | 'assistant';
+  sender: 'user' | 'assistant' | 'tool';
   timestamp: Date;
   status?: 'sending' | 'sent' | 'error';
+  toolCalls?: ToolCall[];
+  isToolCallsComplete?: boolean;
+  toolCallId?: string; // For tool messages
 }
 
 export interface FunctionCall {
@@ -59,6 +62,7 @@ export interface ChatCompletionStreamResponse {
       role?: string;
       content?: string;
       tool_calls?: ToolCall[];
+      tool_call_id?: string;
     };
     finish_reason?: string;
   }[];

@@ -5,9 +5,10 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import ReactMarkdown from 'react-markdown';
 import rehypeHighlight from 'rehype-highlight';
-import type { Message, ChatMessage } from '@/lib/types';
+import type { Message, ChatMessage, ToolCall } from '@/lib/types';
 import { apiClient } from '@/lib/api';
 import { generateId, formatTimestamp } from '@/lib/utils';
+import ToolCallDisplay from './ToolCallDisplay';
 
 const ChatInterface: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([
@@ -73,10 +74,25 @@ const ChatInterface: React.FC = () => {
     }, 200);
 
     try {
-      const chatMessages: ChatMessage[] = [...messages, newMessage].map(msg => ({
-        role: msg.sender === 'user' ? 'user' : 'assistant',
-        content: msg.text
-      }));
+      const chatMessages: ChatMessage[] = [...messages, newMessage].map(msg => {
+        if (msg.sender === 'user') {
+          return { role: 'user' as const, content: msg.text };
+        } else if (msg.sender === 'assistant') {
+          return {
+            role: 'assistant' as const,
+            content: msg.text,
+            ...(msg.toolCalls ? { tool_calls: msg.toolCalls } : {})
+          };
+        } else if (msg.sender === 'tool') {
+          return {
+            role: 'tool' as const,
+            content: msg.text,
+            tool_call_id: msg.toolCallId
+          };
+        }
+        // Fallback
+        return { role: 'assistant' as const, content: msg.text };
+      });
 
       const assistantMessageId = generateId();
       let assistantContent = '';
@@ -89,42 +105,74 @@ const ChatInterface: React.FC = () => {
       }]);
 
       try {
-        let toolCallsInfo = '';
-        let toolCallsReceived = false;
+        let accumulatedToolCalls: ToolCall[] = [];
+        let toolCallsComplete = false;
         
         for await (const chunk of apiClient.chatCompletionStream(chatMessages)) {
           if (chunk.tool_calls) {
-            // Format tool calls for display
-            const toolCallText = chunk.tool_calls.map(tc => {
-              const args = JSON.parse(tc.function.arguments);
-              const formattedArgs = Object.entries(args)
-                .map(([key, value]) => `  ${key}: ${JSON.stringify(value)}`)
-                .join('\n');
-              return `🔧 正在查詢: ${tc.function.name}\n${formattedArgs}`;
-            }).join('\n\n');
+            // Accumulate tool calls
+            accumulatedToolCalls = [...accumulatedToolCalls, ...chunk.tool_calls];
             
-            if (!toolCallsReceived) {
-              toolCallsInfo = toolCallText + '\n\n正在處理中...\n\n';
-              toolCallsReceived = true;
-            } else {
-              toolCallsInfo += '\n' + toolCallText;
+            // Update message with tool calls
+            setMessages(prev => prev.map(msg =>
+              msg.id === assistantMessageId
+                ? { 
+                    ...msg, 
+                    toolCalls: accumulatedToolCalls,
+                    isToolCallsComplete: false
+                  }
+                : msg
+            ));
+          }
+          
+          if (chunk.role === 'tool' && chunk.content && chunk.tool_call_id) {
+            // Handle tool result - create a separate tool message
+            const toolResultMessage: Message = {
+              id: generateId(),
+              text: chunk.content,
+              sender: 'tool',
+              timestamp: new Date(),
+              toolCallId: chunk.tool_call_id
+            };
+            
+            setMessages(prev => [...prev, toolResultMessage]);
+            
+            // Mark tool calls as complete
+            if (!toolCallsComplete) {
+              toolCallsComplete = true;
+              setMessages(prev => prev.map(msg =>
+                msg.id === assistantMessageId
+                  ? { ...msg, isToolCallsComplete: true }
+                  : msg
+              ));
             }
           }
           
-          if (chunk.content) {
+          if (chunk.content && chunk.role !== 'tool') {
+            // Mark tool calls as complete when assistant content starts streaming
+            if (!toolCallsComplete && accumulatedToolCalls.length > 0) {
+              toolCallsComplete = true;
+              setMessages(prev => prev.map(msg =>
+                msg.id === assistantMessageId
+                  ? { ...msg, isToolCallsComplete: true }
+                  : msg
+              ));
+            }
+            
             assistantContent += chunk.content;
+            
+            // Update message with content
+            setMessages(prev => prev.map(msg =>
+              msg.id === assistantMessageId
+                ? { 
+                    ...msg, 
+                    text: assistantContent,
+                    toolCalls: accumulatedToolCalls,
+                    isToolCallsComplete: toolCallsComplete
+                  }
+                : msg
+            ));
           }
-
-          // Display tool calls first, then content
-          const displayText = toolCallsReceived ? 
-            `${toolCallsInfo}${assistantContent}` : 
-            assistantContent;
-
-          setMessages(prev => prev.map(msg =>
-            msg.id === assistantMessageId
-              ? { ...msg, text: displayText }
-              : msg
-          ));
         }
       } catch (streamError) {
         console.error('Streaming error:', streamError);
@@ -215,7 +263,7 @@ const ChatInterface: React.FC = () => {
       <ScrollArea className="flex-1 bg-gradient-to-b from-background via-background to-muted/10">
         <div className="max-w-5xl mx-auto px-6 py-8">
           <div className="space-y-8">
-            {messages.map((message, index) => (
+            {messages.filter(msg => msg.sender !== 'tool').map((message, index) => (
               <div key={message.id} className="animate-in fade-in-0 slide-in-from-bottom-2 duration-700">
                 <div className={`flex gap-5 ${
                   message.sender === 'user' ? 'justify-end' : 'justify-start'
@@ -238,8 +286,19 @@ const ChatInterface: React.FC = () => {
                         message.sender === 'assistant' ? 'text-card-foreground' : 'text-white'
                       }`}>
                         {message.sender === 'assistant' ? (
-                          <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-card-foreground prose-p:text-card-foreground prose-strong:text-card-foreground prose-li:text-card-foreground prose-code:text-card-foreground prose-pre:bg-muted prose-pre:border">
-                            <ReactMarkdown
+                          <div>
+                            {/* Tool Calls Display */}
+                            {message.toolCalls && message.toolCalls.length > 0 && (
+                              <ToolCallDisplay 
+                                toolCalls={message.toolCalls}
+                                isComplete={message.isToolCallsComplete || false}
+                              />
+                            )}
+                            
+                            {/* Response Content */}
+                            {message.text && (
+                              <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-card-foreground prose-p:text-card-foreground prose-strong:text-card-foreground prose-li:text-card-foreground prose-code:text-card-foreground prose-pre:bg-muted prose-pre:border">
+                                <ReactMarkdown
                               rehypePlugins={[rehypeHighlight]}
                               components={{
                               pre: ({ children }) => (
@@ -279,9 +338,11 @@ const ChatInterface: React.FC = () => {
                                 <td className="border border-border px-4 py-2">{children}</td>
                               ),
                             }}
-                              >
-                              {message.text}
-                            </ReactMarkdown>
+                                  >
+                                  {message.text}
+                                </ReactMarkdown>
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <span className="whitespace-pre-wrap">{message.text}</span>

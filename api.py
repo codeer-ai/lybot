@@ -213,8 +213,26 @@ async def stream_response(
                                 logger.info(f"Streamed tool call: {event.part.tool_name}")
                             
                             elif isinstance(event, FunctionToolResultEvent):
-                                # Tool execution completed
+                                # Tool execution completed - stream the result
                                 logger.debug(f"Tool {event.tool_call_id} completed")
+                                
+                                # Create tool result message in OpenAI format
+                                tool_result_chunk = ChatCompletionStreamResponse(
+                                    id=stream_id,
+                                    model=model,
+                                    choices=[
+                                        ChatCompletionStreamResponseChoice(
+                                            index=0,
+                                            delta=ChatCompletionStreamResponseDelta(
+                                                role="tool",
+                                                content=str(event.result.content),
+                                                tool_call_id=event.tool_call_id
+                                            ),
+                                            finish_reason=None,
+                                        )
+                                    ],
+                                )
+                                yield tool_result_chunk.model_dump_json()
                 
                 elif Agent.is_end_node(node):
                     # Agent run complete

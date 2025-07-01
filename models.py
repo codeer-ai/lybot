@@ -59,9 +59,10 @@ class ChatCompletionResponse(BaseModel):
 
 
 class ChatCompletionStreamResponseDelta(BaseModel):
-    role: Optional[Literal["assistant"]] = None
+    role: Optional[Literal["assistant", "tool"]] = None
     content: Optional[str] = None
     tool_calls: Optional[List[ToolCall]] = None
+    tool_call_id: Optional[str] = None
 
 
 class ChatCompletionStreamResponseChoice(BaseModel):

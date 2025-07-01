@@ -46,7 +46,7 @@ export class LyBotAPIClient {
     options: {
       temperature?: number;
     } = {}
-  ): AsyncGenerator<{ content?: string; tool_calls?: ToolCall[]; finish_reason?: string }, void, unknown> {
+  ): AsyncGenerator<{ content?: string; tool_calls?: ToolCall[]; finish_reason?: string; role?: string; tool_call_id?: string }, void, unknown> {
     const { temperature = 0.7 } = options;
 
     const request: ChatCompletionRequest = {
@@ -113,11 +113,13 @@ export class LyBotAPIClient {
               const delta = parsed.choices[0]?.delta;
               const finish_reason = parsed.choices[0]?.finish_reason;
               
-              if (delta?.content || delta?.tool_calls || finish_reason) {
+              if (delta?.content || delta?.tool_calls || delta?.role || finish_reason) {
                 yield {
                   content: delta?.content,
                   tool_calls: delta?.tool_calls,
-                  finish_reason: finish_reason
+                  finish_reason: finish_reason,
+                  role: delta?.role,
+                  tool_call_id: delta?.tool_call_id
                 };
               }
             } catch (e) {
