@@ -49,6 +49,8 @@ lybot/
 ### Core Components
 
 1. **AI Agent**: Uses Gemini 2.5 Pro model with comprehensive system prompt in Traditional Chinese
+   - Supports Google's experimental "thinking mode" for enhanced reasoning
+   - Structured prompts with role definition, core directives, and output formatting
 2. **API Integration**: All API calls go to `https://ly.govapi.tw/v2/` endpoints
 3. **Enhanced Tools** (40+ tools available):
 
@@ -101,6 +103,8 @@ lybot/
 4. **Constituency Mapping**: Smart normalization of constituency names (e.g., "台北市第七選區" → "臺北市第7選舉區")
 5. **Language**: System prompts and user interaction in Traditional Chinese
 6. **Term Support**: Currently optimized for 11th Legislative Yuan term
+7. **PDF Processing**: Uses MarkItDown library for converting PDFs to markdown format
+8. **Logging**: Integrated with loguru for structured logging
 
 ## Important Development Notes
 
@@ -109,6 +113,16 @@ lybot/
 3. **Party Names**: Use full party names (中國國民黨, 民主進步黨, 台灣民眾黨)
 4. **Error Handling**: Enhanced error handling with fallback strategies
 5. **Voting Records**: Can be extracted from gazette PDFs using the gazette tools
+6. **Prompt Engineering**: The agent uses a structured prompt with:
+   - Role definition and core directives
+   - Think-first approach before tool execution
+   - Structured output format with citations
+   - Proactive suggestion capabilities
+7. **Markdown Rendering**: Frontend includes specialized handling for:
+   - Speaker names (bold text) with visual hierarchy
+   - Enhanced list formatting with proper spacing
+   - Blockquote styling for important content
+   - Optimized Chinese typography
 
 ## Testing Status
 
@@ -128,6 +142,8 @@ The project now includes a modern web frontend built with:
 - **shadcn/ui** component library for polished UI components
 - **Tailwind CSS v4** for modern styling with the latest features
 - **FastAPI backend** with OpenAI-compatible API endpoints
+- **React Markdown** with rehype-highlight for syntax highlighting
+- **Custom markdown components** for Legislative Yuan transcript rendering
 
 ### Frontend Structure
 ```
@@ -135,7 +151,8 @@ frontend/
 ├── src/
 │   ├── components/
 │   │   ├── ui/           # shadcn/ui components
-│   │   └── ChatInterface.tsx  # Main chat interface
+│   │   ├── ChatInterface.tsx  # Main chat interface
+│   │   └── ToolCallDisplay.tsx # Tool call visualization component
 │   ├── lib/
 │   │   ├── api.ts        # API client for backend communication
 │   │   ├── types.ts      # TypeScript interfaces
@@ -167,11 +184,13 @@ python api.py         # Start FastAPI server on port 8000
 
 **Frontend Features**:
 - Modern chat interface with message bubbles
-- Real-time streaming responses from AI
+- Real-time streaming responses from AI with tool call visualization
 - Dark/light theme toggle
 - Professional Taiwan Legislative Yuan branding
 - Responsive design with mobile support
 - Type-safe API communication
+- Enhanced markdown rendering for Legislative Yuan transcripts
+- Specialized Chinese typography optimization
 
 **Styling with Tailwind v4**:
 - Uses `@import "tailwindcss"` for v4 syntax
@@ -179,6 +198,8 @@ python api.py         # Start FastAPI server on port 8000
 - Glass morphism effects with backdrop blur
 - Gradient buttons and message bubbles
 - Smooth animations and micro-interactions
+- Custom prose styling for transcript readability
+- Optimized Chinese font stack and spacing
 
 ### Integration Notes
 
