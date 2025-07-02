@@ -68,3 +68,57 @@
     padding: 0;
   }
 }
+
+@layer components {
+  /* 會議記錄專用樣式 - 優化中文排版 */
+  .prose-transcript {
+    /* 中文字體優化 */
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", "微軟正黑體", sans-serif;
+    line-height: 1.8;
+    letter-spacing: 0.02em;
+  }
+
+  /* 針對會議記錄內容的段落優化 */
+  .prose-transcript p {
+    @apply text-base;
+  }
+
+  /* 發言者姓名樣式 - 使用 strong 標籤 */
+  .prose-transcript strong {
+    @apply not-italic;
+  }
+
+  /* 列表項目優化 - 增加間距和可讀性 */
+  .prose-transcript li {
+    @apply text-base;
+    line-height: 1.75;
+  }
+
+  /* 項目符號和編號的對齊調整 */
+  .prose-transcript ul > li::marker,
+  .prose-transcript ol > li::marker {
+    color: hsl(var(--muted-foreground));
+  }
+
+  /* 引用區塊樣式 - 用於重要內容 */
+  .prose-transcript blockquote {
+    @apply text-base;
+    quotes: none;
+  }
+
+  /* 深色模式下的調整 */
+  .dark .prose-transcript strong {
+    color: hsl(var(--primary));
+  }
+
+  /* 響應式設計 - 移動設備優化 */
+  @media (max-width: 640px) {
+    .prose-transcript {
+      @apply text-sm;
+    }
+    
+    .prose-transcript strong {
+      @apply text-base;
+    }
+  }
+}

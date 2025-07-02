@@ -297,7 +297,7 @@ const ChatInterface: React.FC = () => {
                             
                             {/* Response Content */}
                             {message.text && (
-                              <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-card-foreground prose-p:text-card-foreground prose-strong:text-card-foreground prose-li:text-card-foreground prose-code:text-card-foreground prose-pre:bg-muted prose-pre:border">
+                              <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-card-foreground prose-p:text-card-foreground prose-strong:text-card-foreground prose-li:text-card-foreground prose-code:text-card-foreground prose-pre:bg-muted prose-pre:border prose-transcript">
                                 <ReactMarkdown
                               rehypePlugins={[rehypeHighlight]}
                               components={{
@@ -316,14 +316,28 @@ const ChatInterface: React.FC = () => {
                                   <code className={className}>{children}</code>
                                 );
                               },
+                              p: ({ children }) => (
+                                <p className="my-4 leading-relaxed">{children}</p>
+                              ),
+                              strong: ({ children }) => (
+                                <strong className="font-bold text-lg block mt-6 mb-2 first:mt-0" style={{ color: 'hsl(var(--primary))' }}>{children}</strong>
+                              ),
                               ul: ({ children }) => (
-                                <ul className="list-disc list-inside space-y-1">{children}</ul>
+                                <ul className="list-disc list-outside ml-6 space-y-2 my-4">{children}</ul>
                               ),
                               ol: ({ children }) => (
-                                <ol className="list-decimal list-inside space-y-1">{children}</ol>
+                                <ol className="list-decimal list-outside ml-6 space-y-2 my-4">{children}</ol>
+                              ),
+                              li: ({ children }) => (
+                                <li className="leading-relaxed">{children}</li>
+                              ),
+                              blockquote: ({ children }) => (
+                                <blockquote className="border-l-4 border-primary/50 pl-4 my-4 italic bg-muted/30 py-2 pr-4 rounded-r-md">
+                                  {children}
+                                </blockquote>
                               ),
                               table: ({ children }) => (
-                                <div className="overflow-x-auto">
+                                <div className="overflow-x-auto my-6">
                                   <table className="min-w-full border border-border rounded-lg overflow-hidden">
                                     {children}
                                   </table>
