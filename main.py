@@ -8,7 +8,6 @@ import httpx
 from loguru import logger
 from markitdown import MarkItDown
 from pydantic_ai import Agent
-from pydantic_ai.models.google import GoogleModel, GoogleModelSettings
 
 from tools.analysis import (
     analyze_party_statistics,
@@ -62,17 +61,17 @@ from tools.meetings import (
 )
 
 md = MarkItDown()
-# model = OpenAIModel(
-#     "gpt-4.1",
-#     provider=AzureProvider(
-#         api_key=os.getenv("AZURE_API_KEY", ""),
-#         api_version="2024-05-01-preview",
-#         azure_endpoint=os.getenv("AZURE_API_BASE", ""),
-#     ),
-# )
+# # model = OpenAIModel(
+# #     "gpt-4.1",
+# #     provider=AzureProvider(
+# #         api_key=os.getenv("AZURE_API_KEY", ""),
+# #         api_version="2024-05-01-preview",
+# #         azure_endpoint=os.getenv("AZURE_API_BASE", ""),
+# #     ),
+# # )
 
-model = GoogleModel("gemini-2.5-pro")
-settings = GoogleModelSettings(google_thinking_config={"include_thoughts": True})
+# model = GoogleModel("gemini-2.5-pro")
+# settings = GoogleModelSettings(google_thinking_config={"include_thoughts": True})
 
 
 instructions = f"""
@@ -191,9 +190,8 @@ IVOD相關工具：
 """
 
 agent = Agent(
-    model,
+    "openai:gpt-4.1",
     instructions=instructions,
-    model_settings=settings,
 )
 
 
