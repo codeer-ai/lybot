@@ -7,8 +7,6 @@ assets/external/
 **/.DS_Store
 **/.web
 **/node_modules/**
-**/package-lock.json
-**/package.json
 *.db
 *.py[cod]
 .vscode
@@ -18,6 +16,5 @@ backend.zip
 bun.lockb
 dist/*
 frontend.zip
-poetry.lock
 venv/
 *.env
