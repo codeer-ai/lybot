@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Building2, Moon, Sun, Circle, CheckCircle2, Sparkles, Zap } from 'lucide-react';
+import { Send, Moon, Sun, Circle, CheckCircle2, Sparkles, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -263,7 +263,7 @@ const ChatInterface: React.FC = () => {
       <ScrollArea className="flex-1 bg-gradient-to-b from-background via-background to-muted/10">
         <div className="max-w-5xl mx-auto px-6 py-8">
           <div className="space-y-8">
-            {messages.filter(msg => msg.sender !== 'tool').map((message, index) => (
+            {messages.filter(msg => msg.sender !== 'tool').map((message) => (
               <div key={message.id} className="animate-in fade-in-0 slide-in-from-bottom-2 duration-700">
                 <div className={`flex gap-5 ${
                   message.sender === 'user' ? 'justify-end' : 'justify-start'
