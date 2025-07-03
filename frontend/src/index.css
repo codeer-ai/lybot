@@ -122,51 +122,64 @@
     }
   }
 
-  /* 表格樣式優化 */
+  /* 表格樣式優化 - 使用現有主題變數 */
   .prose table {
-    @apply w-full text-sm;
-    border-collapse: separate;
+    @apply w-full text-sm border-collapse;
     border-spacing: 0;
-  }
-
-  .prose thead {
-    @apply font-semibold;
-  }
-
-  .prose tbody tr:hover {
-    @apply bg-muted/10;
-  }
-
-  .prose th,
-  .prose td {
-    @apply text-left;
-  }
-
-  /* 確保表格在小螢幕上可以橫向滾動 */
-  .prose .overflow-x-auto {
-    -webkit-overflow-scrolling: touch;
-  }
-
-  /* 表格內的中文字體優化 */
-  .prose table {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", "微軟正黑體", sans-serif;
     line-height: 1.6;
   }
 
+  .prose thead {
+    background-color: hsl(var(--muted) / 0.3);
+  }
+
+  .prose thead th {
+    @apply px-4 py-3 text-left font-semibold border-b;
+    border-color: hsl(var(--border));
+    color: hsl(var(--foreground));
+    white-space: nowrap;
+  }
+
+  .prose tbody {
+    background-color: hsl(var(--background));
+  }
+
+  .prose tbody tr {
+    @apply border-b transition-colors;
+    border-color: hsl(var(--border));
+  }
+
+  .prose tbody tr:hover {
+    background-color: hsl(var(--muted) / 0.1);
+  }
+
+  .prose tbody td {
+    @apply px-4 py-3;
+    color: hsl(var(--muted-foreground));
+  }
+
+  /* 表格容器樣式 */
+  .prose .table-container {
+    @apply overflow-x-auto my-6 rounded-lg border;
+    border-color: hsl(var(--border) / 0.5);
+    -webkit-overflow-scrolling: touch;
+  }
+
   /* 深色模式下的表格樣式 */
-  .dark .prose table {
-    @apply border-border;
+  .dark .prose thead {
+    background-color: hsl(var(--muted) / 0.2);
   }
 
-  .dark .prose th {
-    @apply bg-muted/20 text-foreground;
+  .dark .prose thead th {
+    color: hsl(var(--foreground));
   }
 
-  .dark .prose td {
-    @apply text-muted-foreground;
+  .dark .prose tbody td {
+    color: hsl(var(--muted-foreground));
   }
 
   .dark .prose tbody tr:hover {
-    @apply bg-muted/10;
+    background-color: hsl(var(--muted) / 0.1);
   }
 }

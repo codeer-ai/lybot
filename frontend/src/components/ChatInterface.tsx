@@ -337,28 +337,26 @@ const ChatInterface: React.FC = () => {
                                 </blockquote>
                               ),
                               table: ({ children }) => (
-                                <div className="overflow-x-auto my-6 rounded-lg border border-border/50">
-                                  <table className="min-w-full divide-y divide-border">
+                                <div className="table-container">
+                                  <table>
                                     {children}
                                   </table>
                                 </div>
                               ),
                               thead: ({ children }) => (
-                                <thead className="bg-muted/30">{children}</thead>
+                                <thead>{children}</thead>
                               ),
                               tbody: ({ children }) => (
-                                <tbody className="divide-y divide-border bg-background">{children}</tbody>
+                                <tbody>{children}</tbody>
                               ),
                               tr: ({ children }) => (
-                                <tr className="hover:bg-muted/20 transition-colors">{children}</tr>
+                                <tr>{children}</tr>
                               ),
                               th: ({ children }) => (
-                                <th className="px-4 py-3 text-left text-sm font-semibold text-foreground whitespace-nowrap">
-                                  {children}
-                                </th>
+                                <th>{children}</th>
                               ),
                               td: ({ children }) => (
-                                <td className="px-4 py-3 text-sm text-muted-foreground">{children}</td>
+                                <td>{children}</td>
                               ),
                             }}
                                   >
