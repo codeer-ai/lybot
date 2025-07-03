@@ -7,7 +7,23 @@
       "WebFetch(domain:ly.govapi.tw)",
       "Bash(mkdir:*)",
       "Bash(python:*)",
-      "Bash(source:*)"
+      "Bash(source:*)",
+      "WebFetch(domain:ai.pydantic.dev)",
+      "WebFetch(domain:github.com)",
+      "Bash(chmod:*)",
+      "Bash(uv run:*)",
+      "Bash(npm create:*)",
+      "Bash(npm install)",
+      "Bash(npm install:*)",
+      "Bash(npx tailwindcss init:*)",
+      "Bash(node_modules/.bin/tailwindcss:*)",
+      "Bash(rm:*)",
+      "Bash(npm run build:*)",
+      "Bash(npx shadcn@latest add:*)",
+      "Bash(npx shadcn add:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(.venv/bin/python:*)"
     ],
     "deny": []
   }
