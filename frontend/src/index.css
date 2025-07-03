@@ -121,4 +121,52 @@
       @apply text-base;
     }
   }
+
+  /* 表格樣式優化 */
+  .prose table {
+    @apply w-full text-sm;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  .prose thead {
+    @apply font-semibold;
+  }
+
+  .prose tbody tr:hover {
+    @apply bg-muted/10;
+  }
+
+  .prose th,
+  .prose td {
+    @apply text-left;
+  }
+
+  /* 確保表格在小螢幕上可以橫向滾動 */
+  .prose .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* 表格內的中文字體優化 */
+  .prose table {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", "微軟正黑體", sans-serif;
+    line-height: 1.6;
+  }
+
+  /* 深色模式下的表格樣式 */
+  .dark .prose table {
+    @apply border-border;
+  }
+
+  .dark .prose th {
+    @apply bg-muted/20 text-foreground;
+  }
+
+  .dark .prose td {
+    @apply text-muted-foreground;
+  }
+
+  .dark .prose tbody tr:hover {
+    @apply bg-muted/10;
+  }
 }
