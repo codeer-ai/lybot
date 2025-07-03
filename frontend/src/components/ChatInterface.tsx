@@ -107,24 +107,24 @@ const ChatInterface: React.FC = () => {
       try {
         let accumulatedToolCalls: ToolCall[] = [];
         let toolCallsComplete = false;
-        
+
         for await (const chunk of apiClient.chatCompletionStream(chatMessages)) {
           if (chunk.tool_calls) {
             // Accumulate tool calls
             accumulatedToolCalls = [...accumulatedToolCalls, ...chunk.tool_calls];
-            
+
             // Update message with tool calls
             setMessages(prev => prev.map(msg =>
               msg.id === assistantMessageId
-                ? { 
-                    ...msg, 
+                ? {
+                    ...msg,
                     toolCalls: accumulatedToolCalls,
                     isToolCallsComplete: false
                   }
                 : msg
             ));
           }
-          
+
           if (chunk.role === 'tool' && chunk.content && chunk.tool_call_id) {
             // Handle tool result - create a separate tool message
             const toolResultMessage: Message = {
@@ -134,9 +134,9 @@ const ChatInterface: React.FC = () => {
               timestamp: new Date(),
               toolCallId: chunk.tool_call_id
             };
-            
+
             setMessages(prev => [...prev, toolResultMessage]);
-            
+
             // Mark tool calls as complete
             if (!toolCallsComplete) {
               toolCallsComplete = true;
@@ -147,7 +147,7 @@ const ChatInterface: React.FC = () => {
               ));
             }
           }
-          
+
           if (chunk.content && chunk.role !== 'tool') {
             // Mark tool calls as complete when assistant content starts streaming
             if (!toolCallsComplete && accumulatedToolCalls.length > 0) {
@@ -158,14 +158,14 @@ const ChatInterface: React.FC = () => {
                   : msg
               ));
             }
-            
+
             assistantContent += chunk.content;
-            
+
             // Update message with content
             setMessages(prev => prev.map(msg =>
               msg.id === assistantMessageId
-                ? { 
-                    ...msg, 
+                ? {
+                    ...msg,
                     text: assistantContent,
                     toolCalls: accumulatedToolCalls,
                     isToolCallsComplete: toolCallsComplete
@@ -289,12 +289,12 @@ const ChatInterface: React.FC = () => {
                           <div>
                             {/* Tool Calls Display */}
                             {message.toolCalls && message.toolCalls.length > 0 && (
-                              <ToolCallDisplay 
+                              <ToolCallDisplay
                                 toolCalls={message.toolCalls}
                                 isComplete={message.isToolCallsComplete || false}
                               />
                             )}
-                            
+
                             {/* Response Content */}
                             {message.text && (
                               <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-card-foreground prose-p:text-card-foreground prose-strong:text-card-foreground prose-li:text-card-foreground prose-code:text-card-foreground prose-pre:bg-muted prose-pre:border prose-transcript">
@@ -451,7 +451,7 @@ const ChatInterface: React.FC = () => {
               </span>
             </div>
             <span className="text-xs font-medium bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
-              Powered by Gemini 2.5 Pro
+              Built with ❤️ by <a href="https://codeer.ai" target="_blank" rel="noopener noreferrer" className="text-violet-600 hover:text-violet-700 transition-colors">Codeer.ai</a>
             </span>
           </div>
         </div>

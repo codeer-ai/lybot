@@ -1,7 +1,7 @@
 import type { ChatCompletionRequest, ChatCompletionResponse, ChatCompletionStreamResponse, ChatMessage } from '@/lib/types';
 
-const API_BASE_URL = 'http://localhost:8000/v1';
-
+// const API_BASE_URL = 'http://localhost:8000/v1';
+const API_BASE_URL = 'https://lybot-z5pc.onrender.com/v1';
 export class LyBotAPIClient {
   private sessionId: string;
 
@@ -80,7 +80,7 @@ export class LyBotAPIClient {
     try {
       while (true) {
         const { done, value } = await reader.read();
-        
+
         if (done) {
           break;
         }
@@ -95,7 +95,7 @@ export class LyBotAPIClient {
 
         for (const line of lines) {
           const trimmedLine = line.trim();
-          
+
           // Skip empty lines
           if (!trimmedLine) {
             continue;
@@ -103,7 +103,7 @@ export class LyBotAPIClient {
 
           if (trimmedLine.startsWith('data: ')) {
             const data = trimmedLine.slice(6).trim(); // Remove 'data: ' prefix
-            
+
             if (data === '[DONE]') {
               return;
             }
@@ -112,7 +112,7 @@ export class LyBotAPIClient {
               const parsed: ChatCompletionStreamResponse = JSON.parse(data);
               const delta = parsed.choices[0]?.delta;
               const finish_reason = parsed.choices[0]?.finish_reason;
-              
+
               if (delta?.content || delta?.tool_calls || delta?.role || finish_reason) {
                 yield {
                   content: delta?.content,

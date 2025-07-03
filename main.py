@@ -1,5 +1,6 @@
 import asyncio
 import json
+import os
 import urllib.parse
 from datetime import datetime
 from typing import Optional
@@ -8,6 +9,8 @@ import httpx
 from loguru import logger
 from markitdown import MarkItDown
 from pydantic_ai import Agent
+from pydantic_ai.models.openai import OpenAIModel
+from pydantic_ai.providers.azure import AzureProvider
 
 from tools.analysis import (
     analyze_party_statistics,
@@ -189,8 +192,17 @@ IVOD相關工具：
 - get_pdf_markdown: 將PDF轉換為markdown格式
 """
 
+model = OpenAIModel(
+    "gpt-4.1",
+    provider=AzureProvider(
+        api_key=os.getenv("AZURE_API_KEY", ""),
+        api_version="2024-05-01-preview",
+        azure_endpoint=os.getenv("AZURE_API_BASE", ""),
+    ),
+)
+
 agent = Agent(
-    "openai:gpt-4.1",
+    model,
     instructions=instructions,
 )
 
