@@ -9,7 +9,9 @@ import httpx
 from loguru import logger
 from markitdown import MarkItDown
 from pydantic_ai import Agent
+from pydantic_ai.models.openai import OpenAIModel
 
+from patch import _process_streamed_response_patched
 from tools.bills import (
     analyze_legislator_bills,
     find_bills_by_keyword,
@@ -54,6 +56,7 @@ from tools.meetings import (
 )
 
 md = MarkItDown()
+OpenAIModel._process_streamed_response = _process_streamed_response_patched  # type: ignore
 
 instructions = f"""
 # 1. 角色 (Role)
@@ -78,8 +81,7 @@ instructions = f"""
 請嚴格遵循以下結構化輸出格式：
 1.  **【總結】**: 在開頭用 2-3 句話簡潔有力地總結核心結論。
 2.  **【詳細分析】**:
-    - 使用條列式、表格或段落來詳細闡述分析過程與結果。
-    - 呈現複雜數據時，優先考慮使用 Markdown 表格。
+    - 使用條列式、段落來詳細闡述分析過程與結果。
     - 提及政黨時，務必使用完整黨名（例如：中國國民黨、民主進步黨、台灣民眾黨）。
 3.  **【參考資料】**:
     - 列出所有用於生成答案的工具呼叫和查詢結果摘要。
