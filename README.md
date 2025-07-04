@@ -2,6 +2,8 @@
 
 A comprehensive AI-powered research assistant for querying Taiwan's Legislative Yuan (立法院) data. Built with Google's Gemini 2.5 Pro model and the pydantic-ai framework, it provides conversational access to legislative information through CLI, web interface, and API.
 
+🚀 **Live Demo**: [https://andydai.github.io/lybot/](https://andydai.github.io/lybot/) | **API**: [https://lybot-z5pc.onrender.com/v1](https://lybot-z5pc.onrender.com/v1)
+
 ## ✨ Features
 
 - **40+ Specialized Tools** for comprehensive legislative data analysis
@@ -44,6 +46,11 @@ uv sync
 3. Set up your Google API key:
 ```bash
 export GOOGLE_API_KEY="your-api-key-here"
+```
+
+4. Run
+```
+uv run python api.py
 ```
 
 ### Configuration
