@@ -10,14 +10,6 @@ from loguru import logger
 from markitdown import MarkItDown
 from pydantic_ai import Agent
 
-from tools.analysis import (
-    analyze_party_statistics,
-    analyze_topic_focus,
-    analyze_voting_alignment,
-    compare_legislators_performance,
-    find_cross_party_cooperation,
-    rank_legislators_by_activity,
-)
 from tools.bills import (
     analyze_legislator_bills,
     find_bills_by_keyword,
@@ -488,14 +480,6 @@ agent.tool_plain(calculate_attendance_rate)
 agent.tool_plain(compare_attendance_rates)
 agent.tool_plain(get_session_info)
 agent.tool_plain(get_party_attendance_statistics)
-
-# Register analysis tools
-agent.tool_plain(analyze_party_statistics)
-agent.tool_plain(analyze_voting_alignment)
-agent.tool_plain(find_cross_party_cooperation)
-agent.tool_plain(rank_legislators_by_activity)
-agent.tool_plain(analyze_topic_focus)
-agent.tool_plain(compare_legislators_performance)
 
 
 async def main():
