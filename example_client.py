@@ -3,7 +3,6 @@
 import asyncio
 import httpx
 import json
-from typing import AsyncGenerator
 
 
 async def chat_completion_example():
