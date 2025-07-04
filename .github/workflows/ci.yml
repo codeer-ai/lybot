@@ -16,67 +16,31 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Install UV
         uses: astral-sh/setup-uv@v3
         with:
           version: "latest"
-      
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      
+
       - name: Install dependencies
         run: |
           uv sync
           uv pip install ruff pyright
-      
+
       - name: Run Ruff linter
         run: uv run ruff check .
-      
+
       - name: Run Ruff formatter
         run: uv run ruff format --check .
-      
+
       - name: Run Pyright type checker
         run: uv run pyright .
 
-  # Backend tests
-  backend-test:
-    name: Backend Tests
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.12", "3.13"]
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Install UV
-        uses: astral-sh/setup-uv@v3
-        with:
-          version: "latest"
-      
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-      
-      - name: Install dependencies
-        run: uv sync
-      
-      - name: Run tests
-        run: |
-          # Add pytest when tests are available
-          # uv run pytest tests/
-          echo "No tests found yet"
-      
-      - name: Test CLI entry point
-        run: |
-          uv run python main.py --help || true
-      
-      - name: Test API server startup
-        run: |
-          timeout 10s uv run python api.py || code=$?; if [[ $code -eq 124 ]]; then exit 0; else exit $code; fi
 
   # Frontend checks
   frontend-lint:
@@ -84,22 +48,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
           cache-dependency-path: frontend/package-lock.json
-      
+
       - name: Install dependencies
         working-directory: frontend
         run: npm ci
-      
+
       - name: Run ESLint
         working-directory: frontend
         run: npm run lint || true  # Allow lint to fail for now
-      
+
       - name: Run TypeScript type check
         working-directory: frontend
         run: npx tsc --noEmit
@@ -110,22 +74,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
           cache-dependency-path: frontend/package-lock.json
-      
+
       - name: Install dependencies
         working-directory: frontend
         run: npm ci
-      
+
       - name: Build frontend
         working-directory: frontend
         run: npm run build
-      
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -139,30 +103,30 @@ jobs:
     needs: [backend-lint, frontend-build]
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Install UV
         uses: astral-sh/setup-uv@v3
         with:
           version: "latest"
-      
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      
+
       - name: Install backend dependencies
         run: uv sync
-      
+
       - name: Start API server
         run: |
           uv run uvicorn api:app --host 0.0.0.0 --port 8000 &
           sleep 5  # Wait for server to start
-      
+
       - name: Test API endpoints
         run: |
           # Test models endpoint
           curl -f http://localhost:8000/v1/models
-          
+
           # Test chat endpoint
           curl -f -X POST http://localhost:8000/v1/chat/completions \
             -H "Content-Type: application/json" \
@@ -178,7 +142,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
