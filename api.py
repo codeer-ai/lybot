@@ -1,32 +1,30 @@
 """FastAPI server for LyBot with OpenAI-compatible API."""
 
-import asyncio
 import json
 import time
-from typing import AsyncGenerator, Dict, List, Optional, Union
 from contextlib import asynccontextmanager
 from datetime import datetime
+from typing import AsyncGenerator, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from sse_starlette.sse import EventSourceResponse
+from loguru import logger
 from pydantic_ai import Agent
-from pydantic_ai.models.google import GoogleModel, GoogleModelSettings
 from pydantic_ai.messages import (
-    ModelMessage, 
-    ToolCallPart, 
-    ToolReturnPart, 
-    TextPart,
     FunctionToolCallEvent,
     FunctionToolResultEvent,
+    ModelMessage,
     PartDeltaEvent,
     PartStartEvent,
+    TextPart,
     TextPartDelta,
+    ToolCallPart,
     ToolCallPartDelta,
 )
-from loguru import logger
+from sse_starlette.sse import EventSourceResponse
 
+# Import the agent setup from main.py
+from main import agent
 from models import (
     ChatCompletionRequest,
     ChatCompletionResponse,
@@ -34,17 +32,12 @@ from models import (
     ChatCompletionStreamResponse,
     ChatCompletionStreamResponseChoice,
     ChatCompletionStreamResponseDelta,
+    FunctionCall,
     Message,
     ModelInfo,
     ModelListResponse,
-    ErrorResponse,
-    FunctionCall,
     ToolCall,
 )
-
-# Import the agent setup from main.py
-from main import agent, instructions
-
 
 # Store conversation sessions
 sessions: Dict[str, List[ModelMessage]] = {}
@@ -86,8 +79,10 @@ def convert_tool_call_to_openai(tool_call: ToolCallPart) -> ToolCall:
         id=tool_call.tool_call_id,
         function=FunctionCall(
             name=tool_call.tool_name,
-            arguments=json.dumps(tool_call.args) if isinstance(tool_call.args, dict) else str(tool_call.args)
-        )
+            arguments=json.dumps(tool_call.args)
+            if isinstance(tool_call.args, dict)
+            else str(tool_call.args),
+        ),
     )
 
 
@@ -110,19 +105,19 @@ async def stream_response(
     """Stream response from the agent with real-time tool call support using iter()."""
     # Get existing session history
     message_history = get_session_history(session_id)
-    
+
     # Extract the last user message as the prompt
     user_messages = [m for m in messages if m.role == "user"]
     if not user_messages:
         yield f"data: {json.dumps({'error': 'No user message found'})}\n\n"
         return
-    
+
     prompt = user_messages[-1].content
-    
+
     try:
         # Create initial response
         stream_id = f"chatcmpl-{int(time.time())}"
-        
+
         # Send initial chunk
         initial_chunk = ChatCompletionStreamResponse(
             id=stream_id,
@@ -136,24 +131,26 @@ async def stream_response(
             ],
         )
         yield initial_chunk.model_dump_json()
-        
+
         # Track state
         accumulated_text = ""
         tool_calls_sent = []
-        
+
         # Run agent with iter() for fine-grained control
         async with agent.iter(prompt, message_history=message_history) as run:
             async for node in run:
                 if Agent.is_model_request_node(node):
                     # Model is generating response - stream text and tool calls
                     logger.debug("Processing ModelRequestNode")
-                    
+
                     async with node.stream(run.ctx) as request_stream:
                         async for event in request_stream:
                             if isinstance(event, PartStartEvent):
                                 if isinstance(event.part, TextPart):
                                     # Starting text generation
-                                    logger.debug(f"Starting text part: {event.part.content[:50]}...")
+                                    logger.debug(
+                                        f"Starting text part: {event.part.content[:50]}..."
+                                    )
                             elif isinstance(event, PartDeltaEvent):
                                 if isinstance(event.delta, TextPartDelta):
                                     # Stream text delta
@@ -176,11 +173,11 @@ async def stream_response(
                                 elif isinstance(event.delta, ToolCallPartDelta):
                                     # Tool call delta - we'll handle complete tool calls in CallToolsNode
                                     logger.debug(f"Tool call delta: {event.delta}")
-                
+
                 elif Agent.is_call_tools_node(node):
                     # Model wants to call tools - stream tool call events
                     logger.debug("Processing CallToolsNode")
-                    
+
                     async with node.stream(run.ctx) as tools_stream:
                         async for event in tools_stream:
                             if isinstance(event, FunctionToolCallEvent):
@@ -189,11 +186,13 @@ async def stream_response(
                                     id=event.part.tool_call_id,
                                     function=FunctionCall(
                                         name=event.part.tool_name,
-                                        arguments=json.dumps(event.part.args) if isinstance(event.part.args, dict) else str(event.part.args)
-                                    )
+                                        arguments=json.dumps(event.part.args)
+                                        if isinstance(event.part.args, dict)
+                                        else str(event.part.args),
+                                    ),
                                 )
                                 tool_calls_sent.append(tool_call)
-                                
+
                                 # Send tool call chunk
                                 tool_call_chunk = ChatCompletionStreamResponse(
                                     id=stream_id,
@@ -209,13 +208,15 @@ async def stream_response(
                                     ],
                                 )
                                 yield tool_call_chunk.model_dump_json()
-                                
-                                logger.info(f"Streamed tool call: {event.part.tool_name}")
-                            
+
+                                logger.info(
+                                    f"Streamed tool call: {event.part.tool_name}"
+                                )
+
                             elif isinstance(event, FunctionToolResultEvent):
                                 # Tool execution completed - stream the result
                                 logger.debug(f"Tool {event.tool_call_id} completed")
-                                
+
                                 # Create tool result message in OpenAI format
                                 tool_result_chunk = ChatCompletionStreamResponse(
                                     id=stream_id,
@@ -226,21 +227,23 @@ async def stream_response(
                                             delta=ChatCompletionStreamResponseDelta(
                                                 role="tool",
                                                 content=str(event.result.content),
-                                                tool_call_id=event.tool_call_id
+                                                tool_call_id=event.tool_call_id,
                                             ),
                                             finish_reason=None,
                                         )
                                     ],
                                 )
                                 yield tool_result_chunk.model_dump_json()
-                
+
                 elif Agent.is_end_node(node):
                     # Agent run complete
                     logger.debug("Processing EndNode")
                     # Update session history
-                    if hasattr(run, 'result') and run.result:
-                        sessions[session_id] = message_history + run.result.new_messages()
-        
+                    if hasattr(run, "result") and run.result:
+                        sessions[session_id] = (
+                            message_history + run.result.new_messages()
+                        )
+
         # Send final chunk
         final_finish_reason = "tool_calls" if tool_calls_sent else "stop"
         final_chunk = ChatCompletionStreamResponse(
@@ -255,12 +258,12 @@ async def stream_response(
             ],
         )
         yield final_chunk.model_dump_json()
-            
+
     except Exception as e:
         logger.error(f"Error in stream_response: {e}")
         error_chunk = {"error": {"message": str(e), "type": "internal_error"}}
         yield json.dumps(error_chunk)
-    
+
     # Send final [DONE] message
     yield "[DONE]"
 
@@ -285,51 +288,49 @@ async def list_models() -> ModelListResponse:
 
 
 @app.post("/v1/chat/completions", response_model=None)
-async def chat_completions(
-    request: ChatCompletionRequest, http_request: Request
-):
+async def chat_completions(request: ChatCompletionRequest, http_request: Request):
     """OpenAI-compatible chat completions endpoint."""
-    
+
     # Generate session ID from user or create new one
     session_id = request.user or f"session-{int(time.time())}"
-    
+
     # Handle streaming response
     if request.stream:
         return EventSourceResponse(
             stream_response(agent, request.messages, request.model, session_id),
             media_type="text/event-stream",
         )
-    
+
     # Handle non-streaming response
     try:
         # Get existing session history
         message_history = get_session_history(session_id)
-        
+
         # Extract the last user message as the prompt
         user_messages = [m for m in request.messages if m.role == "user"]
         if not user_messages:
             raise HTTPException(status_code=400, detail="No user message found")
-        
+
         prompt = user_messages[-1].content
-        
+
         # Run agent
         result = await agent.run(prompt, message_history=message_history)
-        
+
         # Update session history using new_messages()
         new_messages = result.new_messages()
         sessions[session_id] = message_history + new_messages
-        
+
         # Extract tool calls if any
         tool_calls = extract_tool_calls_from_messages(new_messages)
-        
+
         # Create response with tool calls if present
         finish_reason = "tool_calls" if tool_calls else "stop"
         message = Message(
-            role="assistant", 
+            role="assistant",
             content=result.output,
-            tool_calls=tool_calls if tool_calls else None
+            tool_calls=tool_calls if tool_calls else None,
         )
-        
+
         response = ChatCompletionResponse(
             model=request.model,
             choices=[
@@ -345,9 +346,9 @@ async def chat_completions(
                 "total_tokens": -1,
             },
         )
-        
+
         return response
-        
+
     except Exception as e:
         logger.error(f"Error in chat_completions: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -385,7 +386,7 @@ async def root():
 
 if __name__ == "__main__":
     import uvicorn
-    
+
     uvicorn.run(
         app,
         host="0.0.0.0",
