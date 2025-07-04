@@ -1,7 +1,7 @@
 import type { ChatCompletionRequest, ChatCompletionResponse, ChatCompletionStreamResponse, ChatMessage, ToolCall } from '@/lib/types';
 
 // Use environment variable with fallback to production URL
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://lybot-z5pc.onrender.com/v1';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/v1';
 export class LyBotAPIClient {
   private sessionId: string;
 

@@ -9,8 +9,6 @@ import httpx
 from loguru import logger
 from markitdown import MarkItDown
 from pydantic_ai import Agent
-from pydantic_ai.models.openai import OpenAIModel
-from pydantic_ai.providers.azure import AzureProvider
 
 from tools.analysis import (
     analyze_party_statistics,
@@ -64,18 +62,6 @@ from tools.meetings import (
 )
 
 md = MarkItDown()
-# # model = OpenAIModel(
-# #     "gpt-4.1",
-# #     provider=AzureProvider(
-# #         api_key=os.getenv("AZURE_API_KEY", ""),
-# #         api_version="2024-05-01-preview",
-# #         azure_endpoint=os.getenv("AZURE_API_BASE", ""),
-# #     ),
-# # )
-
-# model = GoogleModel("gemini-2.5-pro")
-# settings = GoogleModelSettings(google_thinking_config={"include_thoughts": True})
-
 
 instructions = f"""
 # 1. 角色 (Role)
@@ -192,14 +178,16 @@ IVOD相關工具：
 - get_pdf_markdown: 將PDF轉換為markdown格式
 """
 
-model = OpenAIModel(
-    "gpt-4.1",
-    provider=AzureProvider(
-        api_key=os.getenv("AZURE_API_KEY", ""),
-        api_version="2024-05-01-preview",
-        azure_endpoint=os.getenv("AZURE_API_BASE", ""),
-    ),
-)
+# model = OpenAIModel(
+#     "o3",
+#     # provider=AzureProvider(
+#     #     api_key=os.getenv("AZURE_API_KEY", ""),
+#     #     api_version="2024-05-01-preview",
+#     #     azure_endpoint=os.getenv("AZURE_API_BASE", ""),
+#     # ),
+# )
+
+model = os.getenv("LLM_MODEL", "azure/gpt-4.1")
 
 agent = Agent(
     model,
