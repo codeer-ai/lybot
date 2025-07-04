@@ -178,16 +178,7 @@ IVOD相關工具：
 - get_pdf_markdown: 將PDF轉換為markdown格式
 """
 
-# model = OpenAIModel(
-#     "o3",
-#     # provider=AzureProvider(
-#     #     api_key=os.getenv("AZURE_API_KEY", ""),
-#     #     api_version="2024-05-01-preview",
-#     #     azure_endpoint=os.getenv("AZURE_API_BASE", ""),
-#     # ),
-# )
-
-model = os.getenv("LLM_MODEL", "azure/gpt-4.1")
+model = os.getenv("LLM_MODEL", "azure:gpt-4.1")
 
 agent = Agent(
     model,

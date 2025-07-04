@@ -43,9 +43,23 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 uv sync
 ```
 
-3. Set up your Google API key:
+3. Set up your API key and LLM MODEL:
+
 ```bash
-export GOOGLE_API_KEY="your-api-key-here"
+# GOOGLE
+export GEMINI_API_KEY="your-api-key-here"    
+# OPENAI
+export OPENAI_API_KEY="..."
+
+# AZURE
+export AZURE_OPENAI_ENDPOINT="..."
+export AZURE_OPENAI_API_KEY="..."
+export OPENAI_API_VERSION="..."
+
+# LLM Model
+export LLM_MODEL="azure:gpt-4.1"     # AZURE
+export LLM_MODEL="google-gla:gemini-2.5-flash"   # GOOGLE   
+export LLM_MODEL="openai:gpt-4o"  # OpenAI
 ```
 
 4. Run
