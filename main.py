@@ -27,7 +27,6 @@ from tools.gazettes import (
     search_gazettes,
 )
 from tools.interpellations import (
-    find_legislators_by_position,
     get_interpellation_details,
     get_legislator_interpellations,
     get_meeting_interpellations,
@@ -124,7 +123,6 @@ instructions = f"""
 - search_interpellations: 搜尋質詢記錄
 - get_interpellation_details: 取得質詢詳細內容
 - get_legislator_interpellations: 取得立委所有質詢
-- find_legislators_by_position: 找出支持/反對特定立場的立委
 
 會議相關工具：
 - get_committees: 取得委員會列表
@@ -444,7 +442,6 @@ agent.tool_plain(search_interpellations)
 agent.tool_plain(get_interpellation_details)
 agent.tool_plain(get_meeting_interpellations)
 agent.tool_plain(get_legislator_interpellations)
-agent.tool_plain(find_legislators_by_position)
 
 # Register meeting tools
 agent.tool_plain(get_committees)

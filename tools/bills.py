@@ -48,7 +48,7 @@ def search_bills(
 
     # Add aggregation parameters
     if include_aggs:
-        params["agg"] = ["提案來源", "議案類別", "議案狀態"]
+        params["agg"] = "提案來源,議案類別,議案狀態"
 
     url = "https://ly.govapi.tw/v2/bills"
 
