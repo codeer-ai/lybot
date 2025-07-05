@@ -8,12 +8,14 @@ import uuid
 
 class FunctionCall(BaseModel):
     """OpenAI function call structure."""
+
     name: str
     arguments: str
 
 
 class ToolCall(BaseModel):
     """OpenAI tool call structure."""
+
     id: str
     type: Literal["function"] = "function"
     function: FunctionCall
@@ -45,7 +47,9 @@ class ChatCompletionRequest(BaseModel):
 class ChatCompletionResponseChoice(BaseModel):
     index: int
     message: Message
-    finish_reason: Optional[Literal["stop", "length", "content_filter", "tool_calls"]] = None
+    finish_reason: Optional[
+        Literal["stop", "length", "content_filter", "tool_calls"]
+    ] = None
 
 
 class ChatCompletionResponse(BaseModel):
@@ -68,7 +72,9 @@ class ChatCompletionStreamResponseDelta(BaseModel):
 class ChatCompletionStreamResponseChoice(BaseModel):
     index: int
     delta: ChatCompletionStreamResponseDelta
-    finish_reason: Optional[Literal["stop", "length", "content_filter", "tool_calls"]] = None
+    finish_reason: Optional[
+        Literal["stop", "length", "content_filter", "tool_calls"]
+    ] = None
 
 
 class ChatCompletionStreamResponse(BaseModel):
