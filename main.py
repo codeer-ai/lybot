@@ -53,6 +53,9 @@ from tools.meetings import (
     get_session_info,
 )
 
+# Apply pydantic_ai OpenAI delta patch (defined in patches package)
+import patches.pydantic_ai_stream_patch  # noqa: F401
+
 md = MarkItDown()
 OpenAIModel._process_streamed_response = _process_streamed_response_patched  # type: ignore
 
