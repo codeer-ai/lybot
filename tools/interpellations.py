@@ -2,7 +2,6 @@ from typing import Any, Dict, List, Optional
 
 import httpx
 from loguru import logger
-import json
 
 
 def search_interpellations(
