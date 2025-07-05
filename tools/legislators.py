@@ -5,7 +5,6 @@ import httpx
 from loguru import logger
 
 
-
 def get_legislator_by_constituency(constituency: str) -> str:
     """
     Get legislators by electoral district.

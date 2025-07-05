@@ -27,7 +27,7 @@ from tools.gazettes import (
     search_gazettes,
 )
 from tools.interpellations import (
-    find_legislators_by_position,
+    # find_legislators_by_position,
     get_interpellation_details,
     get_legislator_interpellations,
     get_meeting_interpellations,
@@ -444,7 +444,7 @@ agent.tool_plain(search_interpellations)
 agent.tool_plain(get_interpellation_details)
 agent.tool_plain(get_meeting_interpellations)
 agent.tool_plain(get_legislator_interpellations)
-agent.tool_plain(find_legislators_by_position)
+# agent.tool_plain(find_legislators_by_position)
 
 # Register meeting tools
 agent.tool_plain(get_committees)
