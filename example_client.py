@@ -18,7 +18,7 @@ async def chat_completion_example():
                 "stream": False,
             },
         )
-        
+
         if response.status_code == 200:
             data = response.json()
             print("Assistant:", data["choices"][0]["message"]["content"])
@@ -61,7 +61,7 @@ async def streaming_example():
 async def conversation_example():
     """Example of multi-turn conversation with session management."""
     session_id = "test-session-123"
-    
+
     async with httpx.AsyncClient() as client:
         # First message
         print("User: 請問台灣民眾黨有幾個立委？")
@@ -69,33 +69,29 @@ async def conversation_example():
             "http://localhost:8000/v1/chat/completions",
             json={
                 "model": "lybot-gemini",
-                "messages": [
-                    {"role": "user", "content": "請問台灣民眾黨有幾個立委？"}
-                ],
+                "messages": [{"role": "user", "content": "請問台灣民眾黨有幾個立委？"}],
                 "user": session_id,  # Session ID for conversation tracking
                 "stream": False,
             },
         )
-        
+
         if response.status_code == 200:
             data = response.json()
             print("Assistant:", data["choices"][0]["message"]["content"])
             print()
-        
+
         # Follow-up message
         print("User: 他們分別是誰？")
         response = await client.post(
             "http://localhost:8000/v1/chat/completions",
             json={
                 "model": "lybot-gemini",
-                "messages": [
-                    {"role": "user", "content": "他們分別是誰？"}
-                ],
+                "messages": [{"role": "user", "content": "他們分別是誰？"}],
                 "user": session_id,  # Same session ID
                 "stream": False,
             },
         )
-        
+
         if response.status_code == 200:
             data = response.json()
             print("Assistant:", data["choices"][0]["message"]["content"])
@@ -105,25 +101,23 @@ async def openai_sdk_example():
     """Example using OpenAI Python SDK (requires: pip install openai)."""
     try:
         from openai import AsyncOpenAI
-        
+
         # Configure client to point to local API
         client = AsyncOpenAI(
             base_url="http://localhost:8000/v1",
             api_key="not-needed",  # API key not required for local instance
         )
-        
+
         # Create chat completion
         response = await client.chat.completions.create(
             model="lybot-gemini",
-            messages=[
-                {"role": "user", "content": "請查詢最近關於AI相關的法案"}
-            ],
+            messages=[{"role": "user", "content": "請查詢最近關於AI相關的法案"}],
             stream=False,
         )
-        
+
         print("Using OpenAI SDK:")
         print("Assistant:", response.choices[0].message.content)
-        
+
     except ImportError:
         print("OpenAI SDK not installed. Install with: pip install openai")
 
@@ -131,22 +125,22 @@ async def openai_sdk_example():
 async def main():
     """Run all examples."""
     print("=== LyBot API Examples ===\n")
-    
+
     print("1. Simple Chat Completion:")
     print("-" * 50)
     await chat_completion_example()
     print()
-    
+
     print("2. Streaming Response:")
     print("-" * 50)
     await streaming_example()
     print()
-    
+
     print("3. Multi-turn Conversation:")
     print("-" * 50)
     await conversation_example()
     print()
-    
+
     print("4. OpenAI SDK Compatibility:")
     print("-" * 50)
     await openai_sdk_example()
@@ -156,5 +150,5 @@ if __name__ == "__main__":
     print("Make sure the API server is running with: ./run_api.sh")
     print("Press Enter to continue...")
     input()
-    
+
     asyncio.run(main())
