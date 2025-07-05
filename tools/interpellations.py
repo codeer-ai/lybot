@@ -2,6 +2,7 @@ from typing import Any, Dict, List, Optional
 
 import httpx
 from loguru import logger
+import json
 
 
 def search_interpellations(
@@ -167,3 +168,76 @@ def get_interpellation_statistics(
         "熱門議題": [],
         "最活躍立委": [],
     }
+
+
+# ---------------------------------------------------------------------------
+# Utility: find_legislators_by_position
+# ---------------------------------------------------------------------------
+
+
+def find_legislators_by_position(
+    keyword: str,
+    position: str,
+    *,
+    term: int = 11,
+    limit: int = 200,
+) -> str:
+    """Find legislators who explicitly express a given *position* toward a *keyword* in interpellation records.
+
+    This is a lightweight heuristic implementation that scans the interpellation text returned
+    by :func:`search_interpellations` and counts how many times each legislator appears to take
+    the specified *position* (e.g. "支持", "贊成", "反對") in sentences that also contain the
+    *keyword*.
+
+    Args:
+        keyword: The topic or bill keyword to search for.
+        position: The stance string to look for, such as "支持" or "反對".
+        term: Legislative term to search within. Defaults to 11.
+        limit: Maximum number of interpellation records to fetch.
+
+    Returns
+    -------
+    str
+        JSON-encoded list of objects with two keys::
+
+            [{"委員名稱": "...", "次數": 3}, ...]
+    """
+
+    logger.info(
+        f"Finding legislators by position – keyword={keyword!r}, position={position!r}, term={term}"
+    )
+
+    # Re-use the existing search function to obtain raw records.
+    raw = search_interpellations(keyword=keyword, term=term, limit=limit)
+
+    # search_interpellations currently returns a JSON string, but we guard for dict as well.
+    data: dict[str, Any]
+    if isinstance(raw, str):
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError:
+            logger.error("search_interpellations returned malformed JSON")
+            return "[]"
+    else:
+        data = raw  # type: ignore[assignment]
+
+    counter: dict[str, int] = {}
+
+    for record in data.get("interpellations", []):
+        legislator = record.get("委員名稱")
+        content = record.get("質詢內容", "")
+
+        if not legislator or not content:
+            continue
+
+        # Simple heuristic: the sentence must contain both the keyword and the position string.
+        if keyword in content and position in content:
+            counter[legislator] = counter.get(legislator, 0) + 1
+
+    # Transform into a serialisable structure sorted by occurrence count.
+    result = [
+        {"委員名稱": name, "次數": count}
+        for name, count in sorted(counter.items(), key=lambda x: x[1], reverse=True)
+    ]
+
+    return json.dumps(result, ensure_ascii=False)
