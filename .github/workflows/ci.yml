@@ -42,7 +42,6 @@ jobs:
       - name: Run Pyright type checker
         run: uv run pyright .
 
-
   # Frontend checks
   frontend-lint:
     name: Frontend Lint & Type Check
@@ -63,7 +62,7 @@ jobs:
 
       - name: Run ESLint
         working-directory: frontend
-        run: npm run lint || true  # Allow lint to fail for now
+        run: npm run lint || true # Allow lint to fail for now
 
       - name: Run TypeScript type check
         working-directory: frontend
@@ -119,6 +118,10 @@ jobs:
         run: uv sync
 
       - name: Start API server
+        env:
+          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          OPENAI_API_VERSION: ${{ secrets.OPENAI_API_VERSION }}
         run: |
           uv run uvicorn api:app --host 0.0.0.0 --port 8000 &
           sleep 5  # Wait for server to start
@@ -150,5 +153,5 @@ jobs:
           scan-type: "fs"
           scan-ref: "."
           format: "table"
-          exit-code: "0"  # Don't fail the build
+          exit-code: "0" # Don't fail the build
           severity: "CRITICAL,HIGH"

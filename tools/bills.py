@@ -32,7 +32,12 @@ def search_bills(
         f"Searching bills with filters - term: {term}, session: {session}, type: {bill_type}, proposer: {proposer}, keyword: {keyword}"
     )
 
-    params = {"limit": str(limit), "page": "1", "屆": str(term)}
+    # Allow list[str] values (e.g., for repeated query parameters like "agg")
+    params: dict[str, str | list[str]] = {
+        "limit": str(limit),
+        "page": "1",
+        "屆": str(term),
+    }
 
     if session:
         params["會期"] = str(session)
