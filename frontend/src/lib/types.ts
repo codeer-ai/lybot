@@ -1,12 +1,13 @@
 export interface Message {
   id: string;
   text: string;
-  sender: 'user' | 'assistant' | 'tool';
+  sender: "user" | "assistant" | "tool";
   timestamp: Date;
-  status?: 'sending' | 'sent' | 'error';
+  status?: "sending" | "sent" | "error";
   toolCalls?: ToolCall[];
   isToolCallsComplete?: boolean;
   toolCallId?: string; // For tool messages
+  toolResults?: Record<string, string>; // Mapping of toolCallId to result content
 }
 
 export interface FunctionCall {
@@ -16,12 +17,12 @@ export interface FunctionCall {
 
 export interface ToolCall {
   id: string;
-  type: 'function';
+  type: "function";
   function: FunctionCall;
 }
 
 export interface ChatMessage {
-  role: 'user' | 'assistant' | 'system' | 'tool';
+  role: "user" | "assistant" | "system" | "tool";
   content: string | null;
   tool_calls?: ToolCall[];
   tool_call_id?: string;

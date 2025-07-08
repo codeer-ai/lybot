@@ -1,13 +1,18 @@
-import React from 'react';
-import { CheckCircle2, Settings, Loader2 } from 'lucide-react';
-import type { ToolCall } from '@/lib/types';
+import React from "react";
+import { CheckCircle2, Settings, Loader2 } from "lucide-react";
+import type { ToolCall } from "@/lib/types";
 
 interface ToolCallDisplayProps {
   toolCalls: ToolCall[];
   isComplete: boolean;
+  toolResults?: Record<string, string>;
 }
 
-const ToolCallDisplay: React.FC<ToolCallDisplayProps> = ({ toolCalls, isComplete }) => {
+const ToolCallDisplay: React.FC<ToolCallDisplayProps> = ({
+  toolCalls,
+  isComplete,
+  toolResults,
+}) => {
   if (!toolCalls || toolCalls.length === 0) {
     return null;
   }
@@ -21,15 +26,20 @@ const ToolCallDisplay: React.FC<ToolCallDisplayProps> = ({ toolCalls, isComplete
           <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
         )}
         <span>查詢過程</span>
-        {!isComplete && <span className="text-xs text-blue-500">處理中...</span>}
+        {!isComplete && (
+          <span className="text-xs text-blue-500">處理中...</span>
+        )}
       </div>
-      
+
       <div className="space-y-2">
         {toolCalls.map((toolCall, index) => {
           const args = JSON.parse(toolCall.function.arguments);
-          
+
           return (
-            <div key={toolCall.id || index} className="flex items-start gap-3 p-3 bg-background/50 rounded-lg border border-border/30">
+            <div
+              key={toolCall.id || index}
+              className="flex items-start gap-3 p-3 bg-background/50 rounded-lg border border-border/30"
+            >
               <Settings className="w-4 h-4 mt-0.5 text-violet-500 flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <div className="font-medium text-sm text-foreground mb-1">
@@ -51,11 +61,23 @@ const ToolCallDisplay: React.FC<ToolCallDisplayProps> = ({ toolCalls, isComplete
               {isComplete && (
                 <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
               )}
+
+              {/* Collapsible tool result */}
+              {isComplete && toolResults && toolResults[toolCall.id] && (
+                <details className="mt-2 text-sm bg-muted/20 rounded-md p-3 border border-border/20 whitespace-pre-wrap">
+                  <summary className="cursor-pointer select-none font-medium text-violet-600 dark:text-violet-300">
+                    查詢結果
+                  </summary>
+                  <div className="mt-2 max-h-60 overflow-auto prose prose-sm dark:prose-invert">
+                    {toolResults[toolCall.id]}
+                  </div>
+                </details>
+              )}
             </div>
           );
         })}
       </div>
-      
+
       {isComplete && (
         <div className="flex items-center gap-2 pt-2 border-t border-border/30">
           <div className="h-1 w-1 bg-emerald-500 rounded-full"></div>
@@ -71,45 +93,45 @@ const ToolCallDisplay: React.FC<ToolCallDisplayProps> = ({ toolCalls, isComplete
 // Helper functions to make tool names and parameters more user-friendly
 function getToolDisplayName(toolName: string): string {
   const displayNames: Record<string, string> = {
-    'get_party_seat_count': '查詢政黨席次統計',
-    'get_legislator_by_constituency': '查詢選區立委',
-    'get_legislator_details': '查詢立委詳細資訊',
-    'search_bills': '搜尋法案',
-    'get_bill_details': '查詢法案詳情',
-    'search_interpellations': '搜尋質詢記錄',
-    'calculate_attendance_rate': '計算出席率',
-    'analyze_party_statistics': '分析政黨統計',
+    get_party_seat_count: "查詢政黨席次統計",
+    get_legislator_by_constituency: "查詢選區立委",
+    get_legislator_details: "查詢立委詳細資訊",
+    search_bills: "搜尋法案",
+    get_bill_details: "查詢法案詳情",
+    search_interpellations: "搜尋質詢記錄",
+    calculate_attendance_rate: "計算出席率",
+    analyze_party_statistics: "分析政黨統計",
     // Add more mappings as needed
   };
-  
+
   return displayNames[toolName] || toolName;
 }
 
 function getParamDisplayName(paramName: string): string {
   const displayNames: Record<string, string> = {
-    'party': '政黨',
-    'term': '屆期',
-    'constituency': '選區',
-    'name': '姓名',
-    'keyword': '關鍵字',
-    'limit': '數量限制',
-    'session': '會期',
-    'bill_id': '法案編號',
+    party: "政黨",
+    term: "屆期",
+    constituency: "選區",
+    name: "姓名",
+    keyword: "關鍵字",
+    limit: "數量限制",
+    session: "會期",
+    bill_id: "法案編號",
     // Add more mappings as needed
   };
-  
+
   return displayNames[paramName] || paramName;
 }
 
-function formatParamValue(value: any): string {
-  if (typeof value === 'string') {
+function formatParamValue(value: unknown): string {
+  if (typeof value === "string") {
     return value;
   }
-  if (typeof value === 'number') {
+  if (typeof value === "number") {
     return value.toString();
   }
   if (Array.isArray(value)) {
-    return value.join(', ');
+    return value.join(", ");
   }
   return JSON.stringify(value);
 }
