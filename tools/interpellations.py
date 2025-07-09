@@ -35,7 +35,7 @@ def search_interpellations(
     params = {"limit": str(limit), "page": "1", "屆": str(term)}
 
     if legislator:
-        params["委員名稱"] = legislator
+        params["質詢委員"] = legislator
 
     if keyword:
         params["q"] = keyword
