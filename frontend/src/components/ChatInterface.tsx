@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import type { Message, ChatMessage, ToolCall } from "@/lib/types";
 import { apiClient } from "@/lib/api";
@@ -361,6 +362,7 @@ const ChatInterface: React.FC = () => {
                               {message.text && (
                                 <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-card-foreground prose-p:text-card-foreground prose-strong:text-card-foreground prose-li:text-card-foreground prose-code:text-card-foreground prose-pre:bg-muted prose-pre:border prose-transcript">
                                   <ReactMarkdown
+                                    remarkPlugins={[remarkGfm]}
                                     rehypePlugins={[rehypeHighlight]}
                                     components={{
                                       pre: ({ children }) => (
@@ -429,6 +431,16 @@ const ChatInterface: React.FC = () => {
                                       tr: ({ children }) => <tr>{children}</tr>,
                                       th: ({ children }) => <th>{children}</th>,
                                       td: ({ children }) => <td>{children}</td>,
+                                      a: ({ href, children }) => (
+                                        <a
+                                          href={href as string}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-violet-600 underline hover:text-violet-700"
+                                        >
+                                          {children}
+                                        </a>
+                                      ),
                                     }}
                                   >
                                     {message.text}
