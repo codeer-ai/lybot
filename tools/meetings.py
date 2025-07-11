@@ -218,7 +218,13 @@ def find_meetings_by_bill(bill_name: str, term: int = 11) -> List[Dict[str, Any]
         List of meetings discussing the bill
     """
     # Search meetings that might contain the bill
-    params = {"limit": "200", "page": "1", "屆": str(term), "q": bill_name}
+    params = {
+        "limit": "200",
+        "page": "1",
+        "屆": str(term),
+        # exact-phrase search for the bill name
+        "q": f'"{bill_name}"',
+    }
 
     url = "https://ly.govapi.tw/v2/meets"
     response = httpx.get(url, params=params)
