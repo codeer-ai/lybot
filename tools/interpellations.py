@@ -28,17 +28,19 @@ def search_interpellations(
     Returns:
         JSON string containing interpellation search results
     """
+
     logger.info(
         f"Searching interpellations - legislator: {legislator}, keyword: {keyword}"
     )
 
-    params = {"limit": str(limit), "page": "1", "屆": str(term)}
+    params = {"limit": str(limit), "page": "1", "屆": str(term), "影片種類": "Clip"}
 
     if legislator:
-        params["質詢委員"] = legislator
+        params["委員名稱"] = legislator
 
     if keyword:
-        params["q"] = keyword
+        # exact-phrase search
+        params["q"] = f'"{keyword}"'
 
     if session:
         params["會期"] = str(session)
@@ -49,10 +51,15 @@ def search_interpellations(
     if date_end:
         params["質詢日期_lte"] = f"{date_end}T23:59:59.999Z"
 
-    url = "https://ly.govapi.tw/v2/interpellations"
+    url = "https://ly.govapi.tw/v2/ivods"
     response = httpx.get(url, params=params)
 
-    return response.json()
+    results = response.json()
+    # Remove 'video_url' field from each ivod in the results, if present
+    if "ivods" in results and isinstance(results["ivods"], list):
+        for ivod in results["ivods"]:
+            ivod.pop("video_url", None)
+    return results
 
 
 def get_interpellation_details(interpellation_id: str) -> str:
@@ -111,7 +118,8 @@ def get_legislator_interpellations(
     params = {"limit": "200", "page": "1"}
 
     if keyword:
-        params["q"] = keyword
+        # exact-phrase search to match browser behavior
+        params["q"] = f'"{keyword}"'
 
     response = httpx.get(url, params=params)
     return response.json()

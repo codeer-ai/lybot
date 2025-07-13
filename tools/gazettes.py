@@ -34,7 +34,8 @@ def search_gazettes(
     params = {"limit": str(limit), "page": "1"}
 
     if keywords:
-        params["q"] = keywords
+        # exact-phrase search for keywords
+        params["q"] = f'"{keywords}"'
 
     # Add date filters if provided
     if date_start:
