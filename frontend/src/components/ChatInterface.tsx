@@ -17,6 +17,7 @@ import type { Message, ChatMessage, ToolCall } from "@/lib/types";
 import { apiClient } from "@/lib/api";
 import { generateId, formatTimestamp } from "@/lib/utils";
 import ToolCallDisplay from "./ToolCallDisplay";
+import DisclaimerDialog from "./DisclaimerDialog";
 
 const ChatInterface: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([
@@ -555,6 +556,7 @@ const ChatInterface: React.FC = () => {
                 </kbd>
                 換行
               </span>
+              <DisclaimerDialog isDark={isDark} />
             </div>
             <span className="text-xs font-medium bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
               Built with ❤️ by{" "}
