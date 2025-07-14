@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
 import httpx
 from loguru import logger
@@ -52,14 +52,19 @@ def get_legislator_by_constituency(constituency: str) -> str:
 
 def get_legislator_details(term: int, name: str) -> str:
     """
-    Get detailed information about a specific legislator.
+    Get detailed information about a specific legislator including committees.
 
     Args:
         term: Legislative term (屆)
         name: Legislator name
 
     Returns:
-        JSON string containing detailed legislator information
+        JSON string containing detailed legislator information including:
+        - Basic info (name, party, constituency)
+        - Committee memberships (現任委員會, 歷屆委員會)
+        - Contact information
+        - Educational background
+        - Related API endpoints for bills, meetings, interpellations
     """
     logger.info(f"Getting details for legislator: {name} (term: {term})")
 
@@ -114,65 +119,6 @@ def get_legislators_by_party(party: str, term: int = 11) -> str:
     return response.json()
 
 
-def get_legislator_proposed_bills(
-    term: int, name: str, bill_type: Optional[str] = None
-) -> str:
-    """
-    Get bills proposed by a specific legislator.
-
-    Args:
-        term: Legislative term
-        name: Legislator name
-        bill_type: Optional bill type filter
-
-    Returns:
-        JSON string containing proposed bills
-    """
-    logger.info(f"Getting proposed bills for legislator: {name}")
-
-    url = f"https://ly.govapi.tw/v2/legislators/{term}/{name}/propose_bills"
-    params = {"limit": "200", "page": "1"}
-
-    if bill_type:
-        params["議案類別"] = bill_type
-
-    response = httpx.get(url, params=params)
-    return response.json()
-
-
-def get_legislator_meetings(
-    term: int,
-    name: str,
-    meeting_type: Optional[str] = None,
-    session: Optional[int] = None,
-) -> str:
-    """
-    Get meeting attendance records for a specific legislator.
-
-    Args:
-        term: Legislative term
-        name: Legislator name
-        meeting_type: Optional meeting type filter
-        session: Optional session number filter
-
-    Returns:
-        JSON string containing meeting attendance records
-    """
-    logger.info(f"Getting meeting records for legislator: {name}")
-
-    url = f"https://ly.govapi.tw/v2/legislators/{term}/{name}/meets"
-    params = {"limit": "200", "page": "1"}
-
-    if meeting_type:
-        params["會議種類"] = meeting_type
-
-    if session:
-        params["會期"] = str(session)
-
-    response = httpx.get(url, params=params)
-    return response.json()
-
-
 def get_party_seat_count(party: str, term: int = 11) -> Dict[str, Any]:
     """
     Get the total number of seats for a party across all constituencies.
@@ -205,34 +151,3 @@ def get_party_seat_count(party: str, term: int = 11) -> Dict[str, Any]:
         "各選區分布": constituencies,
         "選區數量": len(constituencies),
     }
-
-
-def get_legislator_committees(term: int, name: str) -> List[Dict[str, str]]:
-    """
-    Get committee memberships for a specific legislator.
-
-    Args:
-        term: Legislative term
-        name: Legislator name
-
-    Returns:
-        List of committee memberships with positions
-    """
-    details = get_legislator_details(term, name)
-
-    if isinstance(details, str):
-        details = json.loads(details)
-
-    committees = []
-    data = details.get("data", {})
-
-    # Extract committee information from various fields
-    for field in ["現任委員會", "歷屆委員會", "委員會"]:
-        if field in data:
-            committee_data = data[field]
-            if isinstance(committee_data, list):
-                committees.extend(committee_data)
-            elif isinstance(committee_data, dict):
-                committees.append(committee_data)
-
-    return committees

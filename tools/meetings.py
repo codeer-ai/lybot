@@ -70,31 +70,58 @@ def calculate_attendance_rate(
     meeting_type: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Calculate attendance rate for a legislator.
+    Calculate attendance rate for a legislator. Use this for individual legislator analysis.
+    For comparing multiple legislators, call this function multiple times and sort results.
 
     Args:
         legislator: Legislator name
-        term: Legislative term
-        session: Optional session number
-        meeting_type: Optional meeting type filter
+        term: Legislative term (default: 11)
+        session: Optional session number filter
+        meeting_type: Optional meeting type filter (委員會、公聽會、黨團協商、院會、聯席會議、全院委員會)
 
     Returns:
-        Dictionary with attendance statistics
+        Dictionary with attendance statistics including:
+        - 出席會議數: Number of meetings attended
+        - 總會議數: Total meetings in the period
+        - 出席率: Attendance rate percentage
+        - 會議類型統計: Breakdown by meeting type
+
+    Note: For party statistics, call this for each party member and aggregate results.
     """
     logger.info(f"Calculating attendance rate for: {legislator}")
 
-    # Get legislator's meetings
-    from tools.legislators import get_legislator_meetings
+    # Get legislator's meetings using the general meeting search
+    # This replaces the deleted get_legislator_meetings function
+    import urllib.parse
 
-    meetings_data = get_legislator_meetings(term, legislator, meeting_type, session)
+    url = "https://ly.govapi.tw/v2/meets"
+    query_parts = []
 
-    if isinstance(meetings_data, str):
-        meetings_data = json.loads(meetings_data)
+    # Add basic parameters
+    query_parts.append("limit=200")
+    query_parts.append("page=1")
+    query_parts.append(f"{urllib.parse.quote('屆')}={term}")
+
+    if session:
+        query_parts.append(f"{urllib.parse.quote('會期')}={session}")
+
+    if meeting_type:
+        query_parts.append(
+            f"{urllib.parse.quote('會議種類')}={urllib.parse.quote(meeting_type)}"
+        )
+
+    # Add attendee filter
+    query_parts.append(
+        f"{urllib.parse.quote('會議資料.出席委員')}={urllib.parse.quote(legislator)}"
+    )
+
+    full_url = f"{url}?{'&'.join(query_parts)}"
+    response = httpx.get(full_url)
+    meetings_data = response.json()
 
     attended_meetings = meetings_data.get("總筆數", 0)
 
     # Get total meetings for the period
-    # This is a simplified calculation - ideally would need to know total required meetings
     total_params = {"limit": "1000", "page": "1", "屆": str(term)}
 
     if session:
@@ -103,7 +130,6 @@ def calculate_attendance_rate(
     if meeting_type:
         total_params["會議種類"] = meeting_type
 
-    url = "https://ly.govapi.tw/v2/meets"
     response = httpx.get(url, params=total_params)
     total_data = response.json()
 
@@ -131,32 +157,6 @@ def calculate_attendance_rate(
         "出席率": f"{attendance_rate:.1f}%",
         "會議類型統計": meeting_breakdown,
     }
-
-
-def compare_attendance_rates(
-    legislators: List[str], term: int = 11, session: Optional[int] = None
-) -> List[Dict[str, Any]]:
-    """
-    Compare attendance rates between multiple legislators.
-
-    Args:
-        legislators: List of legislator names
-        term: Legislative term
-        session: Optional session number
-
-    Returns:
-        List of attendance statistics for comparison
-    """
-    results = []
-
-    for legislator in legislators:
-        stats = calculate_attendance_rate(legislator, term, session)
-        results.append(stats)
-
-    # Sort by attendance rate
-    results.sort(key=lambda x: float(x["出席率"].rstrip("%")), reverse=True)
-
-    return results
 
 
 def get_session_info(term: int = 11) -> Dict[str, Any]:
@@ -254,57 +254,3 @@ def find_meetings_by_bill(bill_name: str, term: int = 11) -> List[Dict[str, Any]
                     break
 
     return relevant_meetings
-
-
-def get_party_attendance_statistics(
-    party: str, term: int = 11, session: Optional[int] = None
-) -> Dict[str, Any]:
-    """
-    Calculate attendance statistics for an entire party.
-
-    Args:
-        party: Party name
-        term: Legislative term
-        session: Optional session number
-
-    Returns:
-        Dictionary with party-wide attendance statistics
-    """
-    from tools.legislators import get_legislators_by_party
-
-    # Get all legislators from the party
-    party_data = get_legislators_by_party(party, term)
-    if isinstance(party_data, str):
-        party_data = json.loads(party_data)
-
-    legislators = [leg.get("委員姓名") for leg in party_data.get("委員資料", [])]
-
-    # Calculate individual attendance rates
-    individual_rates = []
-    total_attended = 0
-    total_meetings = 0
-
-    for legislator in legislators:
-        stats = calculate_attendance_rate(legislator, term, session)
-        individual_rates.append(stats)
-        total_attended += stats["出席會議數"]
-        total_meetings = max(total_meetings, stats["總會議數"])
-
-    # Calculate party average
-    avg_rate = (
-        (total_attended / (len(legislators) * total_meetings) * 100)
-        if total_meetings > 0
-        else 0
-    )
-
-    # Find best and worst attendance
-    individual_rates.sort(key=lambda x: float(x["出席率"].rstrip("%")), reverse=True)
-
-    return {
-        "黨籍": party,
-        "立委人數": len(legislators),
-        "平均出席率": f"{avg_rate:.1f}%",
-        "最高出席率": individual_rates[0] if individual_rates else None,
-        "最低出席率": individual_rates[-1] if individual_rates else None,
-        "個別出席率": individual_rates[:10],  # Top 10
-    }

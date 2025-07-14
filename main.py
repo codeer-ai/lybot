@@ -14,7 +14,6 @@ from pydantic_ai.models.openai import OpenAIModel
 from patch import _process_streamed_response_patched
 from tools.bills import (
     analyze_legislator_bills,
-    find_bills_by_keyword,
     get_bill_cosigners,
     get_bill_details,
     search_bills,
@@ -28,7 +27,6 @@ from tools.gazettes import (
 )
 from tools.interpellations import (
     get_interpellation_details,
-    get_legislator_interpellations,
     get_meeting_interpellations,
     search_interpellations,
 )
@@ -36,20 +34,16 @@ from tools.interpellations import (
 # Import all tool modules
 from tools.legislators import (
     get_legislator_by_constituency,
-    get_legislator_committees,
     get_legislator_details,
-    get_legislator_meetings,
-    get_legislator_proposed_bills,
     get_legislators_by_party,
     get_party_seat_count,
 )
 from tools.meetings import (
     calculate_attendance_rate,
-    compare_attendance_rates,
+    find_meetings_by_bill,
     get_committees,
     get_meeting_bills,
     get_meeting_ivods,
-    get_party_attendance_statistics,
     get_session_info,
 )
 
@@ -95,52 +89,64 @@ instructions = f"""
 - 在完整回答使用者問題後，可以根據主題提出 1-2 個相關的、有價值的延伸問題建議。
 - **範例**: 如果使用者查詢了某位立委的出席率，你可以建議：「您是否還想了解這位委員的法案提案情況，或將他的出席率與同黨派委員進行比較？」
 
-# 4. 可用工具 (Available Tools)
+# 4. 精簡工具清單 (Streamlined Tools)
 
+**立委相關工具：**
 - get_legislator_by_constituency: 根據選區查詢立委（支援模糊比對）
-- get_legislator_details: 取得立委詳細資訊（包含委員會）
+- get_legislator_details: 取得立委詳細資訊（包含委員會、學經歷等完整資訊）
 - get_legislators_by_party: 取得特定政黨所有立委
-- get_legislator_proposed_bills: 取得立委提案的法案
-- get_legislator_meetings: 取得立委參加的會議
 - get_party_seat_count: 統計政黨席次
-- get_legislator_committees: 取得立委委員會資訊
 
-法案相關工具：
-- search_bills: 搜尋法案（可用關鍵字、提案人等）
+**法案相關工具：**
+- search_bills: 搜尋法案的核心工具（支援關鍵字、提案人、議案類別等多重條件）
+  * 用於關鍵字搜尋：search_bills(keyword="環保")
+  * 用於查詢立委提案：search_bills(proposer="立委姓名")
+  * 組合條件搜尋：search_bills(proposer="立委姓名", keyword="關鍵字")
 - get_bill_details: 取得法案詳細資訊
 - get_bill_cosigners: 取得法案連署人
 - analyze_legislator_bills: 分析立委提案統計
-- find_bills_by_keyword: 用關鍵字搜尋法案
 
-投票與公報工具：
+**會議相關工具：**
+- get_meeting_info: 搜尋會議的核心工具（支援出席者、會議類型、日期等條件）
+  * 用於查詢立委參與會議：get_meeting_info(attendees="立委姓名")
+  * 用於搜尋特定類型會議：get_meeting_info(meeting_type="委員會")
+  * 組合條件搜尋：get_meeting_info(attendees="立委姓名", meeting_type="委員會")
+- get_meeting_info_by_id: 取得特定會議詳細內容
+- get_committees: 取得委員會列表
+- get_meeting_bills: 取得會議討論的法案
+- get_meeting_ivods: 取得會議IVOD影片
+- calculate_attendance_rate: 計算立委出席率（如需比較多人，請多次呼叫並自行排序）
+- find_meetings_by_bill: 查詢討論特定法案的會議
+- get_session_info: 取得會期資訊
+
+**投票與公報工具：**
 - search_gazettes: 搜尋公報（可能包含投票記錄）
 - get_gazette_details: 取得公報詳情（含PDF連結）
 - get_gazette_agendas: 取得公報議程
 - extract_voting_records_from_pdf: 從PDF提取投票記錄
 - find_voting_records_for_bill: 查詢特定法案的投票記錄
 
-質詢相關工具：
+**質詢相關工具：**
 - search_interpellations: 搜尋質詢記錄
 - get_interpellation_details: 取得質詢詳細內容
-- get_legislator_interpellations: 取得立委所有質詢
+- get_meeting_interpellations: 取得會議的質詢記錄
 
-會議相關工具：
-- get_committees: 取得委員會列表
-- get_meeting_info: 取得會議資訊
-- get_meeting_info_by_id: 取得特定會議詳情
-- get_meeting_bills: 取得會議討論的法案
-- get_meeting_ivods: 取得會議IVOD影片
-- calculate_attendance_rate: 計算立委出席率
-- compare_attendance_rates: 比較多位立委出席率
-- get_session_info: 取得會期資訊
-- get_party_attendance_statistics: 統計政黨出席率
-
-IVOD相關工具：
+**IVOD相關工具：**
 - search_ivod: 搜尋IVOD影片
 - get_ivod_transcript: 取得IVOD文字稿
 
-其他工具：
+**其他工具：**
+- get_legislators: 取得立委列表（支援姓名、政黨篩選）
 - get_pdf_markdown: 將PDF轉換為markdown格式
+
+# 5. 工具使用最佳實踐 (Best Practices)
+
+1. **優先使用核心搜尋工具**: search_bills、get_meeting_info、search_interpellations 等是多功能工具，應優先使用。
+2. **善用參數組合**: 多數工具支援多重條件篩選，應充分利用以獲得精確結果。
+3. **段階式查詢**: 先用搜尋工具找到相關項目，再用詳細工具深入了解。
+4. **效率導向**: 避免重複查詢相同資訊，善用已取得的資料。
+
+透過精簡後的工具清單，你能更有效率地處理使用者查詢，同時確保資料準確性與完整性。
 """
 
 model = os.getenv("LLM_MODEL", "azure:gpt-4.1")
@@ -418,17 +424,13 @@ def search_ivod(
 agent.tool_plain(get_legislator_by_constituency)
 agent.tool_plain(get_legislator_details)
 agent.tool_plain(get_legislators_by_party)
-agent.tool_plain(get_legislator_proposed_bills)
-agent.tool_plain(get_legislator_meetings)
 agent.tool_plain(get_party_seat_count)
-agent.tool_plain(get_legislator_committees)
 
 # Register bill tools
 agent.tool_plain(search_bills)
 agent.tool_plain(get_bill_details)
 agent.tool_plain(get_bill_cosigners)
 agent.tool_plain(analyze_legislator_bills)
-agent.tool_plain(find_bills_by_keyword)
 
 # Register gazette and voting tools
 agent.tool_plain(search_gazettes)
@@ -441,16 +443,14 @@ agent.tool_plain(find_voting_records_for_bill)
 agent.tool_plain(search_interpellations)
 agent.tool_plain(get_interpellation_details)
 agent.tool_plain(get_meeting_interpellations)
-agent.tool_plain(get_legislator_interpellations)
 
 # Register meeting tools
 agent.tool_plain(get_committees)
 agent.tool_plain(get_meeting_bills)
 agent.tool_plain(get_meeting_ivods)
 agent.tool_plain(calculate_attendance_rate)
-agent.tool_plain(compare_attendance_rates)
+agent.tool_plain(find_meetings_by_bill)
 agent.tool_plain(get_session_info)
-agent.tool_plain(get_party_attendance_statistics)
 
 
 async def main():

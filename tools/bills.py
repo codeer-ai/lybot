@@ -14,19 +14,25 @@ def search_bills(
     include_aggs: bool = True,
 ) -> Dict[str, Any]:
     """
-    Search bills with various filters.
+    Search bills with various filters. This is the primary bill search function.
 
     Args:
         term: Legislative term (default: 11)
         session: Session number (會期)
         bill_type: Bill type (議案類別)
-        proposer: Proposer name (提案人)
-        keyword: Keyword to search in bill titles
+        proposer: Proposer name (提案人) - use this to find bills by specific legislator
+        keyword: Keyword to search in bill titles - use this for content-based search
         limit: Maximum results to return
         include_aggs: Include aggregation data
 
     Returns:
-        Dictionary containing bill search results
+        Dictionary containing bill search results with bills array and metadata
+
+    Examples:
+        - Find bills by keyword: search_bills(keyword="環保")
+        - Find bills by proposer: search_bills(proposer="王委員")
+        - Find bills by type: search_bills(bill_type="法律案")
+        - Combined search: search_bills(proposer="王委員", keyword="環保")
     """
     logger.info(
         f"Searching bills with filters - term: {term}, session: {session}, type: {bill_type}, proposer: {proposer}, keyword: {keyword}"
@@ -162,38 +168,6 @@ def analyze_legislator_bills(
         "議案類別統計": {k: len(v) for k, v in bill_categories.items()},
         "議案詳情": bill_categories,
     }
-
-
-def find_bills_by_keyword(
-    keyword: str, term: int = 11, limit: int = 100
-) -> List[Dict[str, Any]]:
-    """
-    Find bills containing specific keywords.
-
-    Args:
-        keyword: Keyword to search
-        term: Legislative term
-        limit: Maximum results
-
-    Returns:
-        List of bills matching the keyword
-    """
-    results = search_bills(term=term, keyword=keyword, limit=limit)
-
-    bills = []
-    for bill in results.get("bills", []):
-        bills.append(
-            {
-                "議案編號": bill.get("議案編號"),
-                "議案名稱": bill.get("議案名稱"),
-                "提案人": bill.get("提案人"),
-                "提案日期": bill.get("提案日期"),
-                "議案狀態": bill.get("議案狀態"),
-                "會期": bill.get("會期"),
-            }
-        )
-
-    return bills
 
 
 def get_bill_status_timeline(bill_no: str) -> List[Dict[str, str]]:

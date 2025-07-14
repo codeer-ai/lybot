@@ -98,33 +98,6 @@ def get_meeting_interpellations(meeting_id: str) -> str:
     return response.json()
 
 
-def get_legislator_interpellations(
-    term: int, name: str, keyword: Optional[str] = None
-) -> str:
-    """
-    Get all interpellations by a specific legislator.
-
-    Args:
-        term: Legislative term
-        name: Legislator name
-        keyword: Optional keyword filter
-
-    Returns:
-        JSON string containing legislator's interpellations
-    """
-    logger.info(f"Getting interpellations for legislator: {name}")
-
-    url = f"https://ly.govapi.tw/v2/legislators/{term}/{name}/interpellations"
-    params = {"limit": "200", "page": "1"}
-
-    if keyword:
-        # exact-phrase search to match browser behavior
-        params["q"] = f'"{keyword}"'
-
-    response = httpx.get(url, params=params)
-    return response.json()
-
-
 def extract_key_statements(content: str, topic: str) -> List[str]:
     """
     Extract key statements related to a topic from interpellation content.
