@@ -24,7 +24,7 @@ const ChatInterface: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
-      text: "您好！我是 **LyBot**，您的立法院研究助理。我可以幫您查詢立委資訊、法案進度、投票記錄等。有什麼問題想了解嗎？\n\n**例如：**\n- 查詢特定立委的提案記錄\n- 了解法案的投票結果\n- 分析政黨表現統計\n- 查看委員會會議資訊\n\n> 💡 您可以直接詢問任何關於台灣立法院的問題！",
+      text: "您好！我是\n**LyBot**\n，您的立法院研究助理。我可以幫您查詢立委資訊、法案進度、投票記錄等。有什麼問題想了解嗎？\n\n**例如：**\n- 查詢特定立委的發言紀錄（目前品質： 良好）\n- 查看委員會會議資訊（目前品質： 良好）\n- 查詢特定立委的提案記錄（目前品質： 普通）\n- 了解法案的投票結果（目前品質： 普通，或有挑戰）\n- 分析政黨表現統計（目前品質： 有挑戰）\n\n> 使用前，務必先閱讀 [免責聲明](#disclaimer)\n\n若有任何疑問，歡迎來信與我們聯繫： ly@codeer.ai\n\n(對 AI 回應有疑問，請附上「您的提問截圖」和「AI 的回應截圖」）",
       sender: "assistant",
       timestamp: new Date(),
     },
@@ -432,16 +432,23 @@ const ChatInterface: React.FC = () => {
                                       tr: ({ children }) => <tr>{children}</tr>,
                                       th: ({ children }) => <th>{children}</th>,
                                       td: ({ children }) => <td>{children}</td>,
-                                      a: ({ href, children }) => (
-                                        <a
-                                          href={href as string}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="text-violet-600 underline hover:text-violet-700"
-                                        >
-                                          {children}
-                                        </a>
-                                      ),
+                                      a: ({ href, children }) => {
+                                        if (href === "#disclaimer") {
+                                          return (
+                                            <DisclaimerDialog isDark={isDark} />
+                                          );
+                                        }
+                                        return (
+                                          <a
+                                            href={href as string}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-violet-600 underline hover:text-violet-700"
+                                          >
+                                            {children}
+                                          </a>
+                                        );
+                                      },
                                     }}
                                   >
                                     {message.text}
@@ -568,7 +575,6 @@ const ChatInterface: React.FC = () => {
                 </kbd>
                 換行
               </span>
-              <DisclaimerDialog isDark={isDark} />
             </div>
             <span className="text-xs font-medium bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
               Built with ❤️ by{" "}
