@@ -4,7 +4,7 @@ import httpx
 from loguru import logger
 
 
-def get_committees(committee_type: Optional[str] = None) -> str:
+def search_committees(committee_type: Optional[str] = None) -> str:
     """
     Get list of all committees.
 
@@ -27,7 +27,7 @@ def get_committees(committee_type: Optional[str] = None) -> str:
     return response.json()
 
 
-def get_meeting_bills(meeting_id: str) -> str:
+def list_meeting_bills(meeting_id: str) -> str:
     """
     Get bills discussed in a specific meeting.
 
@@ -45,7 +45,7 @@ def get_meeting_bills(meeting_id: str) -> str:
     return response.json()
 
 
-def get_meeting_ivods(meeting_id: str) -> str:
+def list_meeting_ivods(meeting_id: str) -> str:
     """
     Get IVOD recordings for a specific meeting.
 
@@ -63,7 +63,7 @@ def get_meeting_ivods(meeting_id: str) -> str:
     return response.json()
 
 
-def calculate_attendance_rate(
+def analyze_attendance_rate(
     legislator: str,
     term: int = 11,
     session: Optional[int] = None,
@@ -206,7 +206,7 @@ def get_session_info(term: int = 11) -> Dict[str, Any]:
     return {"屆": term, "會期資訊": list(sessions.values())}
 
 
-def find_meetings_by_bill(bill_name: str, term: int = 11) -> List[Dict[str, Any]]:
+def search_meetings_by_bill(bill_name: str, term: int = 11) -> List[Dict[str, Any]]:
     """
     Find meetings where a specific bill was discussed.
 
@@ -243,7 +243,7 @@ def find_meetings_by_bill(bill_name: str, term: int = 11) -> List[Dict[str, Any]
         # Get bills from this meeting to confirm
         meeting_id = meeting.get("會議代碼")
         if meeting_id:
-            bills_data = get_meeting_bills(meeting_id)
+            bills_data = list_meeting_bills(meeting_id)
             if isinstance(bills_data, str):
                 bills_data = json.loads(bills_data)
 

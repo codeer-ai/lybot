@@ -20,7 +20,7 @@ from tools.bills import (
 )
 from tools.gazettes import (
     extract_voting_records_from_pdf,
-    find_voting_records_for_bill,
+    get_bill_voting_records,
     get_gazette_agendas,
     get_gazette_details,
     search_gazettes,
@@ -35,15 +35,14 @@ from tools.interpellations import (
 from tools.legislators import (
     get_legislator_by_constituency,
     get_legislator_details,
-    get_legislators_by_party,
     get_party_seat_count,
 )
 from tools.meetings import (
-    calculate_attendance_rate,
-    find_meetings_by_bill,
-    get_committees,
-    get_meeting_bills,
-    get_meeting_ivods,
+    analyze_attendance_rate,
+    search_meetings_by_bill,
+    search_committees,
+    list_meeting_bills,
+    list_meeting_ivods,
     get_session_info,
 )
 
@@ -110,7 +109,6 @@ instructions = f"""
 **立委相關工具：**
 - get_legislator_by_constituency: 根據選區查詢立委（支援模糊比對）
 - get_legislator_details: 取得立委詳細資訊（包含委員會、學經歷等完整資訊）
-- get_legislators_by_party: 取得特定政黨所有立委
 - get_party_seat_count: 統計政黨席次
 
 **法案相關工具：**
@@ -123,16 +121,16 @@ instructions = f"""
 - analyze_legislator_bills: 分析立委提案統計
 
 **會議相關工具：**
-- get_meeting_info: 搜尋會議的核心工具（支援出席者、會議類型、日期等條件）
-  * 用於查詢立委參與會議：get_meeting_info(attendees="立委姓名")
-  * 用於搜尋特定類型會議：get_meeting_info(meeting_type="委員會")
-  * 組合條件搜尋：get_meeting_info(attendees="立委姓名", meeting_type="委員會")
-- get_meeting_info_by_id: 取得特定會議詳細內容
-- get_committees: 取得委員會列表
-- get_meeting_bills: 取得會議討論的法案
-- get_meeting_ivods: 取得會議IVOD影片
-- calculate_attendance_rate: 計算立委出席率（如需比較多人，請多次呼叫並自行排序）
-- find_meetings_by_bill: 查詢討論特定法案的會議
+- search_meetings: 搜尋會議列表的核心工具（支援出席者、會議類型、日期等條件）
+  * 用於查詢立委參與會議：search_meetings(attendees="立委姓名")
+  * 用於搜尋特定類型會議：search_meetings(meeting_type="委員會")
+  * 組合條件搜尋：search_meetings(attendees="立委姓名", meeting_type="委員會")
+- get_meeting_details: 取得特定會議詳細內容（含議程、附件、IVOD 等）
+- search_committees: 取得委員會列表
+- list_meeting_bills: 取得會議討論的法案
+- list_meeting_ivods: 取得會議IVOD影片
+- analyze_attendance_rate: 計算立委出席率（如需比較多人，請多次呼叫並自行排序）
+- search_meetings_by_bill: 查詢討論特定法案的會議
 - get_session_info: 取得會期資訊
 
 **投票與公報工具：**
@@ -140,7 +138,7 @@ instructions = f"""
 - get_gazette_details: 取得公報詳情（含PDF連結）
 - get_gazette_agendas: 取得公報議程
 - extract_voting_records_from_pdf: 從PDF提取投票記錄
-- find_voting_records_for_bill: 查詢特定法案的投票記錄
+- get_bill_voting_records: 查詢特定法案的投票記錄
 
 **質詢相關工具：**
 - search_interpellations: 搜尋質詢記錄
@@ -148,16 +146,16 @@ instructions = f"""
 - get_meeting_interpellations: 取得會議的質詢記錄
 
 **IVOD相關工具：**
-- search_ivod: 搜尋IVOD影片
+- search_ivods: 搜尋IVOD影片
 - get_ivod_transcript: 取得IVOD文字稿
 
 **其他工具：**
 - get_legislators: 取得立委列表（支援姓名、政黨篩選）
-- get_pdf_markdown: 將PDF轉換為markdown格式
+- convert_pdf_to_markdown: 將PDF轉換為markdown格式
 
 # 5. 工具使用最佳實踐 (Best Practices)
 
-1. **優先使用核心搜尋工具**: search_bills、get_meeting_info、search_interpellations 等是多功能工具，應優先使用。
+1. **優先使用核心搜尋工具**: search_bills、search_meetings、search_interpellations 等是多功能工具，應優先使用。
 2. **善用參數組合**: 多數工具支援多重條件篩選，應充分利用以獲得精確結果。
 3. **段階式查詢**: 先用搜尋工具找到相關項目，再用詳細工具深入了解。
 4. **效率導向**: 避免重複查詢相同資訊，善用已取得的資料。
@@ -209,7 +207,7 @@ def get_legislators(name: Optional[str] = None, party: Optional[str] = None) -> 
 
 
 @agent.tool_plain
-def get_pdf_markdown(pdf_url: str) -> str:
+def convert_pdf_to_markdown(pdf_url: str) -> str:
     """
     Get the markdown of a PDF url.
     """
@@ -285,7 +283,7 @@ def get_ivod_transcript(ivod_id: str) -> str:
 
 
 @agent.tool_plain
-def get_meeting_info(
+def search_meetings(
     session: Optional[int] = None,
     attendees: Optional[list[str] | str] = None,
     meeting_type: Optional[str] = None,
@@ -294,7 +292,9 @@ def get_meeting_info(
     page: int = 1,
 ) -> str:
     """
-    Get meeting information from Legislative Yuan (第 11 屆).
+    Search meetings list from Legislative Yuan (第 11 屆)。
+
+    **使用時機**：當你需要「篩選或瀏覽」符合條件的會議清單，例如依出席委員、會議種類、日期、會期等條件。
 
     Args:
         session: 會期 (session number)
@@ -305,7 +305,7 @@ def get_meeting_info(
         page: Page number (default: 1)
 
     Returns:
-        JSON response containing meeting information
+        JSON response containing meeting list with basic metadata (會議代碼、會議標題、日期等)。欲取得議程、附件、IVOD 等細節，請再以 `search_meetings` 回傳的 `會議代碼` 呼叫 `get_meeting_details`。
     """
     logger.info("Getting meeting information.")
 
@@ -357,9 +357,11 @@ def get_meeting_info(
 
 
 @agent.tool_plain
-def get_meeting_info_by_id(meeting_id: str) -> str:
+def get_meeting_details(meeting_id: str) -> str:
     """
-    Get detailed meeting information by meeting ID.
+    Get **full meeting details** by meeting ID (會議代碼)。
+
+    **使用時機**：當已經知道特定會議的 `會議代碼`，需要完整取得議程、附件、IVOD 連結、相關法案/質詢/表決資料等深度內容時呼叫。
 
     Args:
         meeting_id: 會議代碼 (meeting code/ID, e.g., "黨團協商-2025060995")
@@ -387,7 +389,7 @@ def get_meeting_info_by_id(meeting_id: str) -> str:
 
 
 @agent.tool_plain
-def search_ivod(
+def search_ivods(
     legislator_name: str,
     query: str,
 ) -> str:
@@ -439,7 +441,6 @@ def search_ivod(
 # Register enhanced legislator tools
 agent.tool_plain(get_legislator_by_constituency)
 agent.tool_plain(get_legislator_details)
-agent.tool_plain(get_legislators_by_party)
 agent.tool_plain(get_party_seat_count)
 
 # Register bill tools
@@ -453,7 +454,7 @@ agent.tool_plain(search_gazettes)
 agent.tool_plain(get_gazette_details)
 agent.tool_plain(get_gazette_agendas)
 agent.tool_plain(extract_voting_records_from_pdf)
-agent.tool_plain(find_voting_records_for_bill)
+agent.tool_plain(get_bill_voting_records)
 
 # Register interpellation tools
 agent.tool_plain(search_interpellations)
@@ -461,11 +462,11 @@ agent.tool_plain(get_interpellation_details)
 agent.tool_plain(get_meeting_interpellations)
 
 # Register meeting tools
-agent.tool_plain(get_committees)
-agent.tool_plain(get_meeting_bills)
-agent.tool_plain(get_meeting_ivods)
-agent.tool_plain(calculate_attendance_rate)
-agent.tool_plain(find_meetings_by_bill)
+agent.tool_plain(search_committees)
+agent.tool_plain(list_meeting_bills)
+agent.tool_plain(list_meeting_ivods)
+agent.tool_plain(analyze_attendance_rate)
+agent.tool_plain(search_meetings_by_bill)
 agent.tool_plain(get_session_info)
 
 

@@ -255,7 +255,7 @@ def parse_individual_votes(sections: List[str]) -> Dict[str, str]:
     return votes
 
 
-def find_voting_records_for_bill(
+def get_bill_voting_records(
     bill_name: str, date_range: Optional[tuple] = None
 ) -> List[Dict[str, Any]]:
     """
