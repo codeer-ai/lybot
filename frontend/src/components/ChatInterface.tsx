@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import ReactMarkdown from "react-markdown";
+import rehypeRaw from "rehype-raw";
+import type { Pluggable } from "unified";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import type { Message, ChatMessage, ToolCall } from "@/lib/types";
@@ -19,6 +21,21 @@ import { apiClient } from "@/lib/api";
 import { generateId, formatTimestamp } from "@/lib/utils";
 import ToolCallDisplay from "./ToolCallDisplay";
 import DisclaimerDialog from "./DisclaimerDialog";
+
+// Helper: replace <plan>...</plan> with <details><summary>行動計畫 (Plan)</summary>...</details>
+const transformPlanTags = (text: string, isStreaming: boolean) => {
+  const openAttr = isStreaming ? " open" : "";
+  return text
+    .replace(
+      /<plan>/g,
+      `<details${openAttr}><summary>行動計畫 (Plan)</summary>\n`
+    )
+    .replace(/<\/plan>/g, "</details>");
+};
+
+const rehypeRawPlugin: Pluggable = rehypeRaw as unknown as Pluggable;
+const rehypeHighlightPlugin: Pluggable =
+  rehypeHighlight as unknown as Pluggable;
 
 const ChatInterface: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([
@@ -364,7 +381,10 @@ const ChatInterface: React.FC = () => {
                                 <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-card-foreground prose-p:text-card-foreground prose-strong:text-card-foreground prose-li:text-card-foreground prose-code:text-card-foreground prose-pre:bg-muted prose-pre:border prose-transcript">
                                   <ReactMarkdown
                                     remarkPlugins={[remarkGfm]}
-                                    rehypePlugins={[rehypeHighlight]}
+                                    rehypePlugins={[
+                                      rehypeRawPlugin,
+                                      rehypeHighlightPlugin,
+                                    ]}
                                     components={{
                                       pre: ({ children }) => (
                                         <pre className="bg-muted/50 border border-border rounded-lg p-4 overflow-x-auto">
@@ -451,7 +471,10 @@ const ChatInterface: React.FC = () => {
                                       },
                                     }}
                                   >
-                                    {message.text}
+                                    {transformPlanTags(
+                                      message.text,
+                                      isStreaming
+                                    )}
                                   </ReactMarkdown>
                                 </div>
                               )}
