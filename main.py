@@ -128,10 +128,6 @@ instructions = f"""
 - analyze_legislator_bills: 分析立委提案統計
 
 **會議相關工具：**
-- search_meetings: 搜尋會議列表的核心工具（支援出席者、會議類型、日期等條件）
-  * 用於查詢立委參與會議：search_meetings(attendees="立委姓名")
-  * 用於搜尋特定類型會議：search_meetings(meeting_type="委員會")
-  * 組合條件搜尋：search_meetings(attendees="立委姓名", meeting_type="委員會")
 - get_meeting_details: 取得特定會議詳細內容（含議程、附件、IVOD 等）
 - search_committees: 取得委員會列表
 - list_meeting_bills: 取得會議討論的法案
@@ -162,7 +158,7 @@ instructions = f"""
 
 # 5. 工具使用最佳實踐 (Best Practices)
 
-1. **優先使用核心搜尋工具**: search_bills、search_meetings、search_interpellations 等是多功能工具，應優先使用。
+1. **優先使用核心搜尋工具**: search_bills、search_interpellations 等是多功能工具，應優先使用。
 2. **善用參數組合**: 多數工具支援多重條件篩選，應充分利用以獲得精確結果。
 3. **段階式查詢**: 先用搜尋工具找到相關項目，再用詳細工具深入了解。
 4. **效率導向**: 避免重複查詢相同資訊，善用已取得的資料。
@@ -287,80 +283,6 @@ def get_ivod_transcript(ivod_id: str) -> str:
         data["transcript"] = ""
 
     return data
-
-
-@agent.tool_plain
-def search_meetings(
-    session: Optional[int] = None,
-    attendees: Optional[list[str] | str] = None,
-    meeting_type: Optional[str] = None,
-    date: Optional[str] = None,
-    limit: int = 50,
-    page: int = 1,
-) -> str:
-    """
-    Search meetings list from Legislative Yuan (第 11 屆)。
-
-    **使用時機**：當你需要「篩選或瀏覽」符合條件的會議清單，例如依出席委員、會議種類、日期、會期等條件。
-
-    Args:
-        session: 會期 (session number)
-        attendees: 會議資料.出席委員 (list of attending legislator names, or single string)
-        meeting_type: 會議種類 (委員會、公聽會、黨團協商、院會、聯席會議、全院委員會)
-        date: 日期 (date filter in ISO format, e.g., "2024-04-22T00:00:00.000Z" or "2024-04-22")
-        limit: Number of results per page (default: 50)
-        page: Page number (default: 1)
-
-    Returns:
-        JSON response containing meeting list with basic metadata (會議代碼、會議標題、日期等)。欲取得議程、附件、IVOD 等細節，請再以 `search_meetings` 回傳的 `會議代碼` 呼叫 `get_meeting_details`。
-    """
-    logger.info("Getting meeting information.")
-
-    # Build URL query parts manually to handle repeated parameters
-    url = "https://ly.govapi.tw/v2/meets"
-    query_parts = []
-
-    # Add basic parameters
-    query_parts.append(f"limit={limit}")
-    query_parts.append(f"page={page}")
-    query_parts.append(f"{urllib.parse.quote('屆')}=11")  # Fixed to 11th term
-
-    if session:
-        query_parts.append(f"{urllib.parse.quote('會期')}={session}")
-
-    if meeting_type:
-        query_parts.append(
-            f"{urllib.parse.quote('會議種類')}={urllib.parse.quote(meeting_type)}"
-        )
-
-    if date:
-        # Handle date format - if it's just a date (YYYY-MM-DD), convert to ISO format
-        if len(date) == 10 and date.count("-") == 2:  # Simple date format YYYY-MM-DD
-            date_formatted = f"{date}T00:00:00.000Z"
-        else:
-            date_formatted = date
-        query_parts.append(
-            f"{urllib.parse.quote('日期')}={urllib.parse.quote(date_formatted)}"
-        )
-
-    # Handle attendees (single string or list of strings)
-    if attendees:
-        # Convert single string to list for uniform handling
-        attendee_list = [attendees] if isinstance(attendees, str) else attendees
-        for attendee in attendee_list:
-            query_parts.append(
-                f"{urllib.parse.quote('會議資料.出席委員')}={urllib.parse.quote(attendee)}"
-            )
-
-    # Add aggregation parameters
-    query_parts.append("agg=" + urllib.parse.quote("會期"))
-    query_parts.append("agg=" + urllib.parse.quote("會議種類"))
-
-    full_url = f"{url}?{'&'.join(query_parts)}"
-    logger.debug(f"Meeting search URL: {full_url}")
-
-    response = httpx.get(full_url)
-    return response.json()
 
 
 @agent.tool_plain
