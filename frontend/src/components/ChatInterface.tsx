@@ -23,8 +23,12 @@ import ToolCallDisplay from "./ToolCallDisplay";
 import DisclaimerDialog from "./DisclaimerDialog";
 
 // Helper: replace <plan>...</plan> with <details><summary>行動計畫 (Plan)</summary>...</details>
-const transformPlanTags = (text: string, isStreaming: boolean) => {
-  const openAttr = isStreaming ? " open" : "";
+const transformPlanTags = (text: string) => {
+  // Keep the details element open while the <plan> section is still streaming.
+  // As soon as the closing </plan> tag is present, remove the "open" attribute so it collapses automatically.
+  const shouldKeepOpen = !text.includes("</plan>");
+  const openAttr = shouldKeepOpen ? " open" : "";
+
   return text
     .replace(
       /<plan>/g,
@@ -349,14 +353,14 @@ const ChatInterface: React.FC = () => {
                       }`}
                     >
                       <div
-                        className={`relative group transition-all duration-300 ${
+                        className={`relative group transition-all duration-300 overflow-x-auto ${
                           message.sender === "user"
                             ? "bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-600 text-white px-6 py-4 rounded-3xl rounded-br-xl shadow-lg hover:shadow-xl hover:scale-[1.02]"
                             : "bg-card/80 backdrop-blur border border-border/60 px-6 py-5 rounded-3xl rounded-bl-xl shadow-sm hover:shadow-lg hover:bg-card/90 hover:border-border"
                         }`}
                       >
                         <div
-                          className={`text-[15px] leading-relaxed ${
+                          className={`text-[15px] leading-relaxed break-words ${
                             message.sender === "assistant"
                               ? "text-card-foreground"
                               : "text-white"
@@ -439,8 +443,10 @@ const ChatInterface: React.FC = () => {
                                         </blockquote>
                                       ),
                                       table: ({ children }) => (
-                                        <div className="table-container">
-                                          <table>{children}</table>
+                                        <div className="table-container overflow-x-auto">
+                                          <table className="w-full">
+                                            {children}
+                                          </table>
                                         </div>
                                       ),
                                       thead: ({ children }) => (
@@ -471,10 +477,7 @@ const ChatInterface: React.FC = () => {
                                       },
                                     }}
                                   >
-                                    {transformPlanTags(
-                                      message.text,
-                                      isStreaming
-                                    )}
+                                    {transformPlanTags(message.text)}
                                   </ReactMarkdown>
                                 </div>
                               )}
