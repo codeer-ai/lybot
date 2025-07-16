@@ -10,7 +10,7 @@ dependencies = [
     "ipython>=9.3.0",
     "loguru>=0.7.3",
     "markitdown[pdf]>=0.1.2",
-    "pydantic-ai>=0.3.4",
+    "pydantic-ai==0.4.2",
     "fastapi>=0.115.5",
     "uvicorn[standard]>=0.32.1",
     "python-multipart>=0.0.17",

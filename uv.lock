@@ -799,7 +799,7 @@ requires-dist = [
     { name = "loguru", specifier = ">=0.7.3" },
     { name = "markitdown", extras = ["pdf"], specifier = ">=0.1.2" },
     { name = "posthog", specifier = ">=6.1.0" },
-    { name = "pydantic-ai", specifier = ">=0.3.4" },
+    { name = "pydantic-ai", specifier = "==0.4.2" },
     { name = "pyright", specifier = ">=1.1.402" },
     { name = "python-multipart", specifier = ">=0.0.17" },
     { name = "ruff", specifier = ">=0.12.2" },
