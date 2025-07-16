@@ -10,6 +10,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 from pydantic_ai import Agent
+from pydantic_ai.usage import Usage
 from pydantic_ai.messages import (
     FunctionToolCallEvent,
     FunctionToolResultEvent,
@@ -148,6 +149,8 @@ async def stream_response(
         accumulated_text = ""
         tool_calls_sent = []
 
+        final_usage: Usage | None = None
+
         # Run agent with iter() for fine-grained control
         async with agent.iter(prompt, message_history=message_history) as run:
             async for node in run:
@@ -269,6 +272,7 @@ async def stream_response(
                         sessions[session_id] = (
                             message_history + run.result.new_messages()
                         )
+                    final_usage = run.usage()
 
         # Send final chunk
         final_finish_reason = "tool_calls" if tool_calls_sent else "stop"
@@ -300,6 +304,9 @@ async def stream_response(
         properties={
             "streaming": True,
             "tool_calls": len(tool_calls_sent),
+            "request_tokens": final_usage.request_tokens if final_usage else -1,
+            "response_tokens": final_usage.response_tokens if final_usage else -1,
+            "total_tokens": final_usage.total_tokens if final_usage else -1,
         },
     )
 
