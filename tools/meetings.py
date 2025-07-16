@@ -119,10 +119,12 @@ def analyze_attendance_rate(
     response = httpx.get(full_url)
     meetings_data = response.json()
 
-    attended_meetings = meetings_data.get("總筆數", 0)
+    # The API switched the field name from "總筆數" to "total".
+    # Prefer the new key but keep the old one as a fallback for backward compatibility.
+    attended_meetings = meetings_data.get("total", meetings_data.get("總筆數", 0))
 
     # Get total meetings for the period
-    total_params = {"limit": "1000", "page": "1", "屆": str(term)}
+    total_params = {"limit": "200", "page": "1", "屆": str(term)}
 
     if session:
         total_params["會期"] = str(session)
@@ -133,7 +135,7 @@ def analyze_attendance_rate(
     response = httpx.get(url, params=total_params)
     total_data = response.json()
 
-    total_meetings = total_data.get("總筆數", 0)
+    total_meetings = total_data.get("total", total_data.get("總筆數", 0))
 
     # Calculate rate
     attendance_rate = (
