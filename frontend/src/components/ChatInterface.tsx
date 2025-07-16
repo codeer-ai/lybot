@@ -45,7 +45,7 @@ const ChatInterface: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
-      text: "**LyBot**\n，您的立法院研究助理！\n\n🟢 **我最擅長**\n「查詢立委在議場或委員會的發言紀錄（逐字稿 / 影片）」— 這項功能品質最佳、回覆最完整。\n\n🟡 **也可以嘗試**（開發中，結果可能不完整或有誤）：\n- 查詢立委的提案、連署紀錄\n- 追蹤法案或預算案的流程與表決結果\n- 粗略分析政黨表現、立委出席率\n\n請自由發問！若要得到最準確的結果，建議優先使用「發言查詢」功能；其他資訊請自行查證後再引用。\n\n> 使用前，請先閱讀 [免責聲明](#disclaimer)。繼續使用即表示您已閱讀並同意相關條款。\n\n**注意**：由於 AI 特性與開發時間限制，仍有出錯可能，請善用回應中的連結自行查證。\n\n**目前僅支援第 11 屆立委**\n\n若有任何問題，歡迎來信： ly@codeer.ai\n\n(若對 AI 回應有疑問，請附「您的提問截圖」及「AI 回應截圖」）",
+      text: "**LyBot**\n我是您的立法院研究助理！\n\n🟢 **我最擅長**\n「查詢立委在議場或委員會的發言紀錄（逐字稿 / 影片）」— 這項功能品質最佳、回覆最完整。\n\n🟡 **也可以嘗試**（開發中，結果可能不完整或有誤）：\n- 查詢立委的提案、連署紀錄\n- 追蹤法案或預算案的流程與表決結果\n- 粗略分析政黨表現、立委出席率\n\n請自由發問！若要得到最準確的結果，建議優先使用「發言查詢」功能；其他資訊請自行查證後再引用。\n\n> 使用前，請先閱讀 [免責聲明](#disclaimer)。繼續使用即表示您已閱讀並同意相關條款。\n\n**注意**：由於 AI 特性與開發時間限制，仍有出錯可能，請善用回應中的連結自行查證。\n\n**目前僅支援第 11 屆立委**\n\n若有任何問題，歡迎來信： ly@codeer.ai\n\n(若對 AI 回應有疑問，請附「您的提問截圖」及「AI 回應截圖」）",
       sender: "assistant",
       timestamp: new Date(),
     },
@@ -570,13 +570,13 @@ const ChatInterface: React.FC = () => {
                   onKeyPress={handleKeyPress}
                   placeholder="詢問關於立法院的任何問題..."
                   className="min-h-[44px] px-0 py-2 text-[16px] bg-transparent border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/60 resize-none"
-                  disabled={isLoading}
+                  disabled={isLoading || isStreaming}
                 />
               </div>
 
               <Button
                 onClick={handleSendMessage}
-                disabled={isLoading || inputValue.trim() === ""}
+                disabled={isLoading || isStreaming || inputValue.trim() === ""}
                 className="bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-600 hover:from-violet-600 hover:via-purple-600 hover:to-fuchsia-700 text-white border-0 h-11 w-11 rounded-2xl transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-110 disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed group"
               >
                 <Send className="w-4 h-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform duration-200" />
