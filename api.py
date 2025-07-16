@@ -38,6 +38,7 @@ from models import (
     ModelListResponse,
     ToolCall,
 )
+from utils.analytics import capture
 
 # Store conversation sessions
 sessions: Dict[str, List[ModelMessage]] = {}
@@ -131,6 +132,16 @@ async def stream_response(
             ],
         )
         yield initial_chunk.model_dump_json()
+
+        # Analytics: record start of streaming query
+        capture(
+            distinct_id=session_id,
+            event="chat_query_start",
+            properties={
+                "prompt": prompt,
+                "streaming": True,
+            },
+        )
 
         # Track state
         accumulated_text = ""
@@ -235,6 +246,17 @@ async def stream_response(
                                 )
                                 yield tool_result_chunk.model_dump_json()
 
+                                # Analytics: record tool query + result
+                                capture(
+                                    distinct_id=session_id,
+                                    event="tool_query",
+                                    properties={
+                                        "tool_call_id": event.tool_call_id,
+                                        "result": str(event.result.content),
+                                        "question": prompt,
+                                    },
+                                )
+
                 elif Agent.is_end_node(node):
                     # Agent run complete
                     logger.debug("Processing EndNode")
@@ -266,6 +288,16 @@ async def stream_response(
 
     # Send final [DONE] message
     yield "[DONE]"
+
+    # Emit analytics event (streaming)
+    capture(
+        distinct_id=session_id,
+        event="chat_query_end",
+        properties={
+            "streaming": True,
+            "tool_calls": len(tool_calls_sent),
+        },
+    )
 
 
 @app.get("/health")
