@@ -39,6 +39,7 @@ from models import (
     ToolCall,
 )
 from utils.analytics import capture
+from utils.token_utils import token_count
 
 # Store conversation sessions
 sessions: Dict[str, List[ModelMessage]] = {}
@@ -254,6 +255,9 @@ async def stream_response(
                                         "tool_call_id": event.tool_call_id,
                                         "result": str(event.result.content),
                                         "question": prompt,
+                                        "response_tokens": token_count(
+                                            str(event.result.content)
+                                        ),
                                     },
                                 )
 

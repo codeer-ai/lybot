@@ -18,4 +18,5 @@ dependencies = [
     "ruff>=0.12.2",
     "pyright>=1.1.402",
     "posthog>=6.1.0",
+    "tiktoken>=0.9.0",
 ]
