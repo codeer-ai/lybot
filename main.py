@@ -4,9 +4,11 @@ from datetime import datetime
 from typing import Optional
 
 import httpx
+from google.genai.types import HarmBlockThreshold, HarmCategory
 from loguru import logger
 from markitdown import MarkItDown
 from pydantic_ai import Agent
+from pydantic_ai.models.google import GoogleModelSettings
 from pydantic_ai.models.openai import OpenAIModel
 
 from patch import _process_streamed_response_patched
@@ -109,6 +111,16 @@ instructions = f"""
 """
 
 model = os.getenv("LLM_MODEL", "azure:gpt-4.1")
+
+google_model_settings = GoogleModelSettings(
+    google_thinking_config={"thinking_budget": 0, "include_thoughts": False},
+    google_safety_settings=[
+        {
+            "category": HarmCategory.HARM_CATEGORY_CIVIC_INTEGRITY,
+            "threshold": HarmBlockThreshold.BLOCK_NONE,
+        }
+    ],
+)
 
 agent = Agent(
     model,

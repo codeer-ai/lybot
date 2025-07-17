@@ -19,4 +19,5 @@ dependencies = [
     "pyright>=1.1.402",
     "posthog>=6.1.0",
     "tiktoken>=0.9.0",
+    "pydantic-ai-slim[google]>=0.4.2",
 ]

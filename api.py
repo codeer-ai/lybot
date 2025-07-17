@@ -10,7 +10,6 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 from pydantic_ai import Agent
-from pydantic_ai.usage import Usage
 from pydantic_ai.messages import (
     FunctionToolCallEvent,
     FunctionToolResultEvent,
@@ -22,6 +21,7 @@ from pydantic_ai.messages import (
     ToolCallPart,
     ToolCallPartDelta,
 )
+from pydantic_ai.usage import Usage
 from sse_starlette.sse import EventSourceResponse
 
 # Import the agent setup from main.py
@@ -166,6 +166,20 @@ async def stream_response(
                                     logger.debug(
                                         f"Starting text part: {event.part.content[:50]}..."
                                     )
+                                    yield ChatCompletionStreamResponse(
+                                        id=stream_id,
+                                        model=model,
+                                        choices=[
+                                            ChatCompletionStreamResponseChoice(
+                                                index=0,
+                                                delta=ChatCompletionStreamResponseDelta(
+                                                    role="assistant",
+                                                    content=event.part.content,
+                                                ),
+                                                finish_reason=None,
+                                            )
+                                        ],
+                                    ).model_dump_json()
                             elif isinstance(event, PartDeltaEvent):
                                 if isinstance(event.delta, TextPartDelta):
                                     # Stream text delta
