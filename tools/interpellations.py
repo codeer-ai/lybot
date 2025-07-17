@@ -4,64 +4,6 @@ import httpx
 from loguru import logger
 
 
-def search_interpellations(
-    legislator: Optional[str] = None,
-    keyword: Optional[str] = None,
-    term: int = 11,
-    session: Optional[int] = None,
-    date_start: Optional[str] = None,
-    date_end: Optional[str] = None,
-    limit: int = 200,
-) -> str:
-    """
-    Search interpellation records with various filters.
-
-    Args:
-        legislator: Legislator name to filter by
-        keyword: Keyword to search in interpellation content
-        term: Legislative term (default: 11)
-        session: Session number
-        date_start: Start date (YYYY-MM-DD)
-        date_end: End date (YYYY-MM-DD)
-        limit: Maximum results
-
-    Returns:
-        JSON string containing interpellation search results
-    """
-
-    logger.info(
-        f"Searching interpellations - legislator: {legislator}, keyword: {keyword}"
-    )
-
-    params = {"limit": str(limit), "page": "1", "屆": str(term), "影片種類": "Clip"}
-
-    if legislator:
-        params["委員名稱"] = legislator
-
-    if keyword:
-        # exact-phrase search
-        params["q"] = f'"{keyword}"'
-
-    if session:
-        params["會期"] = str(session)
-
-    if date_start:
-        params["質詢日期_gte"] = f"{date_start}T00:00:00.000Z"
-
-    if date_end:
-        params["質詢日期_lte"] = f"{date_end}T23:59:59.999Z"
-
-    url = "https://ly.govapi.tw/v2/ivods"
-    response = httpx.get(url, params=params)
-
-    results = response.json()
-    # Remove 'video_url' field from each ivod in the results, if present
-    if "ivods" in results and isinstance(results["ivods"], list):
-        for ivod in results["ivods"]:
-            ivod.pop("video_url", None)
-    return results
-
-
 def get_interpellation_details(interpellation_id: str) -> str:
     """
     Get full interpellation content and details.

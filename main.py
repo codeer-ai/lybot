@@ -1,7 +1,5 @@
 import asyncio
-import json
 import os
-import urllib.parse
 from datetime import datetime
 from typing import Optional
 
@@ -12,39 +10,12 @@ from pydantic_ai import Agent
 from pydantic_ai.models.openai import OpenAIModel
 
 from patch import _process_streamed_response_patched
-from tools.bills import (
-    analyze_legislator_bills,
-    get_bill_cosigners,
-    get_bill_details,
-    search_bills,
-)
-from tools.gazettes import (
-    extract_voting_records_from_pdf,
-    get_bill_voting_records,
-    get_gazette_agendas,
-    get_gazette_details,
-    search_gazettes,
-)
-from tools.interpellations import (
-    get_interpellation_details,
-    get_meeting_interpellations,
-    search_interpellations,
-)
-
-# Import all tool modules
+# Import only the helper tools that improve search_ivod_clips usage
 from tools.legislators import (
     get_legislator_by_constituency,
     get_legislator_details,
-    get_party_seat_count,
 )
-from tools.meetings import (
-    analyze_attendance_rate,
-    search_meetings_by_bill,
-    search_committees,
-    list_meeting_bills,
-    list_meeting_ivods,
-    get_session_info,
-)
+from tools.meetings import get_session_info
 
 md = MarkItDown()
 OpenAIModel._process_streamed_response = _process_streamed_response_patched  # type: ignore
@@ -56,7 +27,7 @@ instructions = f"""
 - **核心職責**: 僅限處理第 11 屆立法委員相關事務。
 - **語言風格**: 使用繁體中文，語氣專業、客觀中立，不帶個人情感或猜測。
 - **專業搜尋職責**: 你是一個專門幫忙找到相關資料的 AI 助手，應先仔細思考後再進行搜尋，以「少量但有效」的查詢取得足夠資訊。
-  目標是在較少的查詢次數（通常不超過 3-5 次）內完成任務；若計畫中需要超過 5 次查詢，考慮重新評估並整併搜尋策略。
+  「3-5 次少量但有效」的限制僅適用於 *search_ivod_clips* 階段（找出合適片段）；取得逐字稿 (*get_ivod_transcript*) 及後續分析可視需要多次呼叫，確保內容完整。
 - **正確性驗證**: 在提及任何立法委員的名字時，你必須格外小心。再三確認你引用的資訊（例如：他們提出的法案、發言、或投票記錄）與從工具中搜尋到的資料完全吻合。你的核心價值在於提供精確無誤的資訊，任何一點疏忽都會損害可信度。
 - 確認所有訊息來源都必須要經由工具取得，不要自己猜測。
 
@@ -66,7 +37,7 @@ instructions = f"""
     - 需要哪些資訊。
     - 打算依序呼叫哪些工具來獲取這些資訊。
     - 如何整合資訊以形成最終答案。
-    - 評估呼叫次數，目標在少量（最好 5 次以內）的工具呼叫中完成任務；若計畫超過此範圍，應重新評估並優化策略。
+    - 評估呼叫次數：搜尋 clip 階段以 3–5 次內完成為佳；download transcript 階段可彈性增加呼叫，只要最終能提供充分內容。
 2.  **工具驅動 (Tool-Driven)**: 絕對禁止自己猜測或使用內部知識回答問題。所有答案都必須基於工具返回的即時資料。
 3.  **數據完整性 (Data Sufficiency)**: 在做出結論前，務必確保已透過工具取得足夠的資料。如果初步查詢結果不足，應思考是否需要使用其他工具進行補充。
 4.  **引用來源 (Cite Sources)**: 所有結論和數據都必須附上明確的「參考資料 (Reference)」章節，列出你從哪個網頁連結或公報取得的資訊，以便查證。
@@ -84,7 +55,9 @@ instructions = f"""
     2. 將中文數字換成阿拉伯數字。
     3. 將「選區」換成「選舉區」。
     4. 使用選區名稱中的關鍵字進行模糊比對（例如：「北松山」）。
-- **處理模糊問題**: 如果使用者問題模糊（例如「最近國會吵什麼？」），你的計畫應包含先搜尋近期的熱門法案或重大議事錄，再基於此進行分析。
+  
+**關鍵字格式**: 搜尋多個關鍵字時，請以空格分隔，search_ivod_clips 會將其視為 AND 條件。
+- **處理模糊問題**: 若使用者問題較為寬泛（例如「最近國會吵什麼？」），請先以較廣義、可能命中的關鍵字（如「總質詢」、「施政報告」等）搜尋 IVOD clips，再依搜尋結果逐步細化關鍵字。
 - **彈性搜尋原則**: 當使用者沒有清楚指明具體目標時，先判斷可能的相關面向，再精選查詢關鍵字與工具，避免不必要的冗餘呼叫。
   建議流程：
   1. 從最關鍵、最有可能命中的條件開始搜尋
@@ -93,77 +66,46 @@ instructions = f"""
   4. 隨時檢視目前已獲得的資訊，避免重複或無效的額外查詢
 - **靈活搜尋原則**: 若初步查詢未獲得足夠資料，可靈活嘗試替代策略（更換關鍵字或工具），
   但一般應在 3-5 次查詢內決定是否回報無資料或重新解析問題。
+- **IVOD優先原則**: 對於任何與「會議」或「質詢」相關的提問，首先呼叫 search_ivod_clips 工具取得對應影片，接著使用 get_ivod_transcript 取得逐字稿，再根據逐字稿回答問題；僅當此流程無法滿足需求時，再考慮使用其他會議或公報相關工具。
 
 ### 3.2. 錯誤處理與後備策略 (Error Handling & Fallbacks)
 - **工具查詢失敗**: 如果任何工具呼叫失敗或返回空結果，不要立即放棄。應在「行動計畫」中調整參數（例如，放寬搜尋關鍵字）並重試。
 - **關鍵字搜尋優化策略**: 當關鍵字搜尋結果為 0 或偏少時，採用以下策略：
-  1. **關鍵字拆分**: 將複合關鍵字拆分為單個詞彙進行搜尋（例如：「環境保護」→「環境」、「保護」）
-  2. **同義詞替換**: 使用相關同義詞或近義詞進行搜尋（例如：「環保」→「環境」、「生態」）
-  3. **範圍擴大**: 使用更廣泛的相關詞彙搜尋（例如：「核電」→「電力」、「能源」）
-  4. **多重組合**: 嘗試不同的關鍵字組合和條件參數
-  5. **跨工具搜尋**: 如果某個工具搜尋結果不足，嘗試使用其他相關工具（例如：法案搜尋無結果時，嘗試會議搜尋或質詢搜尋）
-- **搜尋策略調整**: 若初步查詢未獲得足夠資料，可靈活嘗試替代策略（更換關鍵字或工具），
-  但一般應在 3-5 次查詢內決定是否回報無資料或重新解析問題。
+  1. **關鍵字精簡**: 先刪減次要詞彙，僅保留最核心 1–2 個關鍵字進行搜尋，以擴大覆蓋範圍
+  2. **關鍵字拆分**: 將複合關鍵字拆分為單個詞彙進行搜尋（例如：「環境保護」→「環境」、「保護」）
+  3. **同義詞替換**: 使用相關同義詞或近義詞進行搜尋（例如：「環保」→「環境」、「生態」）
+  4. **範圍擴大**: 使用更廣泛的相關詞彙搜尋（例如：「核電」→「電力」、「能源」）
+  5. **多重組合**: 嘗試不同的關鍵字組合和條件參數
+- **IVOD搜尋調整策略**: 若初步搜尋結果不足，可嘗試：① 拆分或替換同義關鍵字；② 調整日期／會期範圍；③ 改以立委姓名 + 關鍵字交叉查詢，再重新呼叫 search_ivod_clips。
 - **最終無資料**: 如果多次嘗試後仍無法找到所需資料，必須明確告知使用者：「目前找不到關於『[查詢主題]』的具體資料」，
   並簡述你已經嘗試過的查詢方法。
-
-### 3.3. 主動建議 (Proactive Suggestions)
-- 在完整回答使用者問題後，可以根據主題提出 1-2 個相關的、有價值的延伸問題建議。
-- **範例**: 如果使用者查詢了某位立委的出席率，你可以建議：「您是否還想了解這位委員的法案提案情況，或將他的出席率與同黨派委員進行比較？」
 
 # 4. 精簡工具清單 (Streamlined Tools)
 
 **立委相關工具：**
-- get_legislator_by_constituency: 根據選區查詢立委（支援模糊比對）
-- get_legislator_details: 取得立委詳細資訊（包含委員會、學經歷等完整資訊）
-- get_party_seat_count: 統計政黨席次
-
-**法案相關工具：**
-- search_bills: 搜尋法案的核心工具（支援關鍵字、提案人、議案類別等多重條件）
-  * 用於關鍵字搜尋：search_bills(keyword="環保")
-  * 用於查詢立委提案：search_bills(proposer="立委姓名")
-  * 組合條件搜尋：search_bills(proposer="立委姓名", keyword="關鍵字")
-- get_bill_details: 取得法案詳細資訊
-- get_bill_cosigners: 取得法案連署人
-- analyze_legislator_bills: 分析立委提案統計
-
-**會議相關工具：**
-- get_meeting_details: 取得特定會議詳細內容（含議程、附件、IVOD 等）
-- search_committees: 取得委員會列表
-- list_meeting_bills: 取得會議討論的法案
-- list_meeting_ivods: 取得會議IVOD影片
-- analyze_attendance_rate: 計算立委出席率（如需比較多人，請多次呼叫並自行排序）
-- search_meetings_by_bill: 查詢討論特定法案的會議
-- get_session_info: 取得會期資訊
-
-**投票與公報工具：**
-- search_gazettes: 搜尋公報（可能包含投票記錄）
-- get_gazette_details: 取得公報詳情（含PDF連結）
-- get_gazette_agendas: 取得公報議程
-- extract_voting_records_from_pdf: 從PDF提取投票記錄
-- get_bill_voting_records: 查詢特定法案的投票記錄
-
-**質詢相關工具：**
-- search_interpellations: 搜尋質詢記錄
-- get_interpellation_details: 取得質詢詳細內容
-- get_meeting_interpellations: 取得會議的質詢記錄
+- get_legislator_by_constituency
+- get_legislator_details
+- get_legislators
+- get_session_info
 
 **IVOD相關工具：**
-- search_ivods: 搜尋IVOD影片
-- get_ivod_transcript: 取得IVOD文字稿
+- search_ivod_clips
+- get_ivod_transcript
 
-**其他工具：**
-- get_legislators: 取得立委列表（支援姓名、政黨篩選）
-- convert_pdf_to_markdown: 將PDF轉換為markdown格式
 
 # 5. 工具使用最佳實踐 (Best Practices)
+以下技巧專為 IVOD 發言查詢流程設計，務必遵循：
 
-1. **優先使用核心搜尋工具**: search_bills、search_interpellations 等是多功能工具，應優先使用。
-2. **善用參數組合**: 多數工具支援多重條件篩選，應充分利用以獲得精確結果。
-3. **段階式查詢**: 先用搜尋工具找到相關項目，再用詳細工具深入了解。
-4. **效率導向**: 避免重複查詢相同資訊，善用已取得的資料。
+1. **參數組合**：靈活搭配 `legislator`、`keyword`、`session`／`date_start`／`date_end`，一次搜尋即鎖定最相關 clips。
+2. **關鍵字策略**：
+   - 先嘗試完整關鍵字；若命中不足，逐字拆分或替換同義詞後再次查詢。
+   - 關鍵字之間請用空白分隔，系統將自動視為 *AND* 條件（避免影響引號精確搜尋）。
+3. **段階式流程**：
+   ① `search_ivod_clips`（≤5 次）取得片段清單 → ② 逐一呼叫 `get_ivod_transcript`（可多次）抓完整逐字稿 → ③ 統整並回答。
+4. **平行下載**：可同時呼叫多個 `get_ivod_transcript` 以加速取得多段資料，再一併彙整。
+5. **引用精準**：回答時附上 clip 連結與時間戳，並註明來源日期，確保可回溯。
 
-透過精簡後的工具清單，你能更有效率地處理使用者查詢，同時確保資料準確性與完整性。
+依循以上原則，可高效且完整地提供使用者所需之發言內容。
 """
 
 model = os.getenv("LLM_MODEL", "azure:gpt-4.1")
@@ -209,7 +151,6 @@ def get_legislators(name: Optional[str] = None, party: Optional[str] = None) -> 
     return response.json()
 
 
-@agent.tool_plain
 def convert_pdf_to_markdown(pdf_url: str) -> str:
     """
     Get the markdown of a PDF url.
@@ -286,116 +227,66 @@ def get_ivod_transcript(ivod_id: str) -> str:
 
 
 @agent.tool_plain
-def get_meeting_details(meeting_id: str) -> str:
-    """
-    Get **full meeting details** by meeting ID (會議代碼)。
-
-    **使用時機**：當已經知道特定會議的 `會議代碼`，需要完整取得議程、附件、IVOD 連結、相關法案/質詢/表決資料等深度內容時呼叫。
-
-    Args:
-        meeting_id: 會議代碼 (meeting code/ID, e.g., "黨團協商-2025060995")
-
-    Returns:
-        JSON response containing detailed meeting information including:
-        - 會議基本資料 (basic meeting info)
-        - 議事網資料 (parliamentary data)
-        - 關係文書 (related documents)
-        - 附件 (attachments)
-        - 連結 (links to videos, documents)
-        - 相關資料 (related data like IVODs, bills, interpellations)
-    """
-
-    logger.info(f"Getting detailed meeting information for ID: {meeting_id}")
-
-    # URL encode the meeting ID to handle Chinese characters and special characters
-    encoded_meeting_id = urllib.parse.quote(meeting_id)
-    url = f"https://ly.govapi.tw/v2/meet/{encoded_meeting_id}"
-
-    logger.debug(f"Meeting detail URL: {url}")
-
-    response = httpx.get(url)
-    return response.json()
-
-
-@agent.tool_plain
-def search_ivods(
-    legislator_name: str,
-    query: str,
+def search_ivod_clips(
+    legislator: Optional[str] = None,
+    keyword: Optional[str] = None,
+    term: int = 11,
+    session: Optional[int] = None,
+    date_start: Optional[str] = None,
+    date_end: Optional[str] = None,
+    limit: int = 20,
 ) -> str:
     """
-    Search for IVOD videos by legislator name and query.
-    Backend 是使用 elasticsearch.
+    Search interpellation records with various filters.
 
     Args:
-        legislator_name: The name of the legislator (委員名稱)
-        query: The search query (q)
+        legislator: Legislator name to filter by
+        keyword: Keyword to search in interpellation content
+        term: Legislative term (default: 11)
+        session: Session number
+        date_start: Start date (YYYY-MM-DD)
+        date_end: End date (YYYY-MM-DD)
+        limit: Maximum results
 
     Returns:
         JSON response containing IVOD search results
     """
     logger.info(
-        f"Searching IVOD for legislator '{legislator_name}' with query '{query}'."
+        f"Searching interpellations - legislator: {legislator}, keyword: {keyword}"
     )
 
-    params = {
-        "limit": str(200),
-        "q": f'"{query}"',  # 用雙引號包住查詢字串，如同範例 URL
-        "agg": "影片種類",
-        "屆": "11",
-        "委員名稱": legislator_name,
-    }
+    params = {"limit": str(limit), "page": "1", "屆": str(term), "影片種類": "Clip"}
 
-    logger.debug(f"Search params: {params}")
+    if legislator:
+        params["委員名稱"] = legislator
+
+    if keyword:
+        # exact-phrase search
+        params["q"] = f'"{keyword}"'
+
+    if session:
+        params["會期"] = str(session)
+
+    if date_start:
+        params["質詢日期_gte"] = f"{date_start}T00:00:00.000Z"
+
+    if date_end:
+        params["質詢日期_lte"] = f"{date_end}T23:59:59.999Z"
+
     url = "https://ly.govapi.tw/v2/ivods"
     response = httpx.get(url, params=params)
-    data = response.json()
-    r = json.dumps(
-        [
-            {
-                "IVOD_ID": str(ivod["IVOD_ID"]),
-                "IVOD_URL": ivod["IVOD_URL"],
-                "日期": ivod["日期"],
-                "會議資料": ivod["會議資料"],
-                "委員名稱": ivod["委員名稱"],
-                "會議名稱": ivod["會議名稱"],
-            }
-            for ivod in data["ivods"]
-        ],
-        ensure_ascii=False,
-    )
-    logger.info(f"Search results: {r}")
-    return r
+
+    results = response.json()
+    # Remove 'video_url' field from each ivod in the results, if present
+    if "ivods" in results and isinstance(results["ivods"], list):
+        for ivod in results["ivods"]:
+            ivod.pop("video_url", None)
+    return results
 
 
-# Register enhanced legislator tools
+# Register remaining helper tools
 agent.tool_plain(get_legislator_by_constituency)
 agent.tool_plain(get_legislator_details)
-agent.tool_plain(get_party_seat_count)
-
-# Register bill tools
-agent.tool_plain(search_bills)
-agent.tool_plain(get_bill_details)
-agent.tool_plain(get_bill_cosigners)
-agent.tool_plain(analyze_legislator_bills)
-
-# Register gazette and voting tools
-agent.tool_plain(search_gazettes)
-agent.tool_plain(get_gazette_details)
-agent.tool_plain(get_gazette_agendas)
-agent.tool_plain(extract_voting_records_from_pdf)
-agent.tool_plain(get_bill_voting_records)
-
-# Register interpellation tools
-agent.tool_plain(search_interpellations)
-agent.tool_plain(get_interpellation_details)
-agent.tool_plain(get_meeting_interpellations)
-
-# Register meeting tools
-agent.tool_plain(search_committees)
-agent.tool_plain(list_meeting_bills)
-agent.tool_plain(list_meeting_ivods)
-agent.tool_plain(analyze_attendance_rate)
-agent.tool_plain(search_meetings_by_bill)
 agent.tool_plain(get_session_info)
 
 

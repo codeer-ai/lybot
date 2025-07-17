@@ -1,5 +1,4 @@
-import json
-from typing import Optional, List, Dict, Any
+from typing import Optional, Dict, Any
 import httpx
 from loguru import logger
 
@@ -23,42 +22,6 @@ def search_committees(committee_type: Optional[str] = None) -> str:
 
     url = "https://ly.govapi.tw/v2/committees"
     response = httpx.get(url, params=params)
-
-    return response.json()
-
-
-def list_meeting_bills(meeting_id: str) -> str:
-    """
-    Get bills discussed in a specific meeting.
-
-    Args:
-        meeting_id: Meeting ID
-
-    Returns:
-        JSON string containing bills from the meeting
-    """
-    logger.info(f"Getting bills for meeting: {meeting_id}")
-
-    url = f"https://ly.govapi.tw/v2/meets/{meeting_id}/bills"
-    response = httpx.get(url)
-
-    return response.json()
-
-
-def list_meeting_ivods(meeting_id: str) -> str:
-    """
-    Get IVOD recordings for a specific meeting.
-
-    Args:
-        meeting_id: Meeting ID
-
-    Returns:
-        JSON string containing IVOD links
-    """
-    logger.info(f"Getting IVODs for meeting: {meeting_id}")
-
-    url = f"https://ly.govapi.tw/v2/meets/{meeting_id}/ivods"
-    response = httpx.get(url)
 
     return response.json()
 
@@ -206,53 +169,3 @@ def get_session_info(term: int = 11) -> Dict[str, Any]:
                     sessions[session_num]["最晚日期"] = meeting_date
 
     return {"屆": term, "會期資訊": list(sessions.values())}
-
-
-def search_meetings_by_bill(bill_name: str, term: int = 11) -> List[Dict[str, Any]]:
-    """
-    Find meetings where a specific bill was discussed.
-
-    Args:
-        bill_name: Name of the bill
-        term: Legislative term
-
-    Returns:
-        List of meetings discussing the bill
-    """
-    # Search meetings that might contain the bill
-    params = {
-        "limit": "200",
-        "page": "1",
-        "屆": str(term),
-        # exact-phrase search for the bill name
-        "q": f'"{bill_name}"',
-    }
-
-    url = "https://ly.govapi.tw/v2/meets"
-    response = httpx.get(url, params=params)
-    data = response.json()
-
-    relevant_meetings = []
-
-    for meeting in data.get("meets", []):
-        meeting_info = {
-            "會議代碼": meeting.get("會議代碼"),
-            "會議名稱": meeting.get("會議名稱"),
-            "日期": meeting.get("日期"),
-            "會議種類": meeting.get("會議種類"),
-        }
-
-        # Get bills from this meeting to confirm
-        meeting_id = meeting.get("會議代碼")
-        if meeting_id:
-            bills_data = list_meeting_bills(meeting_id)
-            if isinstance(bills_data, str):
-                bills_data = json.loads(bills_data)
-
-            for bill in bills_data.get("bills", []):
-                if bill_name in bill.get("議案名稱", ""):
-                    meeting_info["相關議案"] = bill.get("議案名稱")
-                    relevant_meetings.append(meeting_info)
-                    break
-
-    return relevant_meetings
