@@ -63,7 +63,7 @@ const ToolCallDisplay: React.FC<ToolCallDisplayProps> = ({
               )}
 
               {/* Collapsible tool result */}
-              {isComplete && toolResults && toolResults[toolCall.id] && (
+              {/* isComplete && toolResults && toolResults[toolCall.id] && (
                 <details className="mt-2 text-sm bg-muted/20 rounded-md p-3 border border-border/20 whitespace-pre-wrap">
                   <summary className="cursor-pointer select-none font-medium text-violet-600 dark:text-violet-300">
                     查詢結果
@@ -72,7 +72,7 @@ const ToolCallDisplay: React.FC<ToolCallDisplayProps> = ({
                     {toolResults[toolCall.id]}
                   </div>
                 </details>
-              )}
+              ) */}
             </div>
           );
         })}

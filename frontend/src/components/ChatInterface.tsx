@@ -360,7 +360,7 @@ const ChatInterface: React.FC = () => {
                         }`}
                       >
                         <div
-                          className={`text-[15px] leading-relaxed break-words ${
+                          className={`text-[15px] leading-relaxed ${
                             message.sender === "assistant"
                               ? "text-card-foreground"
                               : "text-white"
@@ -483,7 +483,7 @@ const ChatInterface: React.FC = () => {
                               )}
                             </div>
                           ) : (
-                            <span className="whitespace-pre-wrap">
+                            <span className="whitespace-pre-wrap break-words">
                               {message.text}
                             </span>
                           )}
